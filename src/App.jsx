@@ -350,26 +350,6 @@ const CSS = `
     .stats-grid { grid-template-columns:1fr 1fr; }
     .form-grid-2, .form-grid-3 { grid-template-columns:1fr; }
   }
-  /* ── RESPONSIVE ── */
-  @media (max-width: 1200px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .page { padding: 28px 32px; }
-  }
-  @media (max-width: 768px) {
-    :root { --sidebar-w: 280px; }
-    .sidebar { position: fixed; top: 0; left: 0; height: 100vh; transform: translateX(-100%); }
-    .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
-    .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 99; }
-    .mobile-menu-btn { display: flex; }
-    .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-    .stat-card { padding: 20px 18px; }
-    .stat-value { font-size: 28px; }
-    .page { padding: 20px 16px; }
-    .page-title { font-size: 22px; }
-    .form-grid-2 { grid-template-columns: 1fr; }
-    .form-grid-3 { grid-template-columns: 1fr; }
-    .modal { max-width: 100%; }
-  }
   @media (max-width: 420px) {
     .stats-grid { grid-template-columns: 1fr; }
   }
