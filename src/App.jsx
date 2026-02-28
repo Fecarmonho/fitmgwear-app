@@ -284,7 +284,8 @@ const CSS = `
   .login-tab { flex:1; padding:9px; font-size:13px; font-weight:600; cursor:pointer; background:none; border:none; color:var(--text2); font-family:'DM Sans',sans-serif; transition:all 0.15s; }
   .login-tab.active { background:var(--accent); color:#000; }
   .users-grid { display:grid; gap:10px; margin-top:16px; }
-  .user-row { display:flex; align-items:center; gap:12px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; }
+  .user-row { display:flex; align-items:center; gap:10px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; flex-wrap:nowrap; min-width:0; }
+  .user-role-wrap { flex-shrink:0; }
   .user-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
   .user-info { flex:1; min-width:0; }
   .user-name { font-size:13px; font-weight:600; color:var(--text); }
@@ -611,6 +612,8 @@ function LoginScreen({ primeiroAcesso }) {
 function GerenciarUsuarios({ usuarioAtual }) {
   const [usuarios, setUsuarios] = useState([]);
   const [modal, setModal] = useState(false);
+  const [editandoUsuario, setEditandoUsuario] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
   const [form, setForm] = useState({ nome: "", email: "", senha: "", cargo: "funcionario" });
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -625,37 +628,67 @@ function GerenciarUsuarios({ usuarioAtual }) {
 
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
 
-  async function criarUsuario(e) {
+  function abrirNovoUsuario() {
+    setEditandoUsuario(null);
+    setForm({ nome: "", email: "", senha: "", cargo: "funcionario" });
+    setModal(true);
+  }
+
+  function abrirEditarUsuario(u) {
+    setEditandoUsuario(u);
+    setForm({ nome: u.nome || "", email: u.email || "", senha: "", cargo: u.cargo || "funcionario" });
+    setModal(true);
+  }
+
+  async function salvarUsuario(e) {
     e.preventDefault();
-    if (!form.nome.trim() || !form.email.trim() || form.senha.length < 6)
-      return toast("Preencha todos os campos. Senha mínimo 6 caracteres.", "error");
-    setLoading(true);
-    try {
-      // Criar no Firebase Auth via API REST (sem trocar o usuário logado)
-      const res = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${auth.app.options.apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email.trim(), password: form.senha, returnSecureToken: true })
-        }
-      );
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      // Salvar perfil no Firestore
-      await setDoc(doc(db, "usuarios", data.localId), {
-        uid: data.localId, nome: form.nome.trim(),
-        email: form.email.trim(), cargo: form.cargo,
-        criadoEm: new Date().toISOString(), criadoPor: usuarioAtual?.uid
-      });
-      toast(`Usuário ${form.nome} criado com sucesso! ✓`);
-      setForm({ nome: "", email: "", senha: "", cargo: "funcionario" });
-      setModal(false);
-    } catch (err) {
-      const msgs = { "EMAIL_EXISTS": "Este e-mail já está cadastrado.", "WEAK_PASSWORD": "Senha muito fraca." };
-      toast(msgs[err.message] || "Erro ao criar usuário.", "error");
-    } finally {
-      setLoading(false);
+    if (editandoUsuario) {
+      // Editar: só atualiza nome e cargo no Firestore
+      if (!form.nome.trim()) return toast("Preencha o nome.", "error");
+      setLoading(true);
+      try {
+        await setDoc(doc(db, "usuarios", editandoUsuario.id), {
+          ...editandoUsuario,
+          nome: form.nome.trim(),
+          cargo: form.cargo,
+        });
+        toast(`Usuário ${form.nome} atualizado! ✓`);
+        setModal(false);
+      } catch (err) {
+        toast("Erro ao atualizar usuário.", "error");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Criar novo
+      if (!form.nome.trim() || !form.email.trim() || form.senha.length < 6)
+        return toast("Preencha todos os campos. Senha mínimo 6 caracteres.", "error");
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${auth.app.options.apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: form.email.trim(), password: form.senha, returnSecureToken: true })
+          }
+        );
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        await setDoc(doc(db, "usuarios", data.localId), {
+          uid: data.localId, nome: form.nome.trim(),
+          email: form.email.trim(), cargo: form.cargo,
+          criadoEm: new Date().toISOString(), criadoPor: usuarioAtual?.uid
+        });
+        toast(`Usuário ${form.nome} criado com sucesso! ✓`);
+        setForm({ nome: "", email: "", senha: "", cargo: "funcionario" });
+        setModal(false);
+      } catch (err) {
+        const msgs = { "EMAIL_EXISTS": "Este e-mail já está cadastrado.", "WEAK_PASSWORD": "Senha muito fraca." };
+        toast(msgs[err.message] || "Erro ao criar usuário.", "error");
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
@@ -663,15 +696,17 @@ function GerenciarUsuarios({ usuarioAtual }) {
     if (u.uid === usuarioAtual?.uid) return toast("Você não pode remover a si mesmo.", "error");
     await deleteDoc(doc(db, "usuarios", u.id));
     toast("Usuário removido do sistema.");
+    setConfirmId(null);
   }
 
   const cores = { dono: "#e8b84b", funcionario: "#4da6ff" };
+  const usuarioParaRemover = usuarios.find(u => u.id === confirmId);
 
   return (
     <div>
       <div className="page-header">
         <div><h1 className="page-title">Usuários</h1><p className="page-sub">Gerencie quem tem acesso ao sistema</p></div>
-        <button className="btn btn-primary" onClick={() => setModal(true)}><Icon name="plus" />Novo Usuário</button>
+        <button className="btn btn-primary" onClick={abrirNovoUsuario}><Icon name="plus" />Novo Usuário</button>
       </div>
 
       <div className="card">
@@ -691,17 +726,23 @@ function GerenciarUsuarios({ usuarioAtual }) {
                     <div className="user-name">{u.nome || "Sem nome"}</div>
                     <div className="user-email">{u.email}</div>
                   </div>
-                  <span className={`user-role ${u.cargo === "dono" ? "role-dono" : "role-func"}`}>
-                    {u.cargo === "dono" ? "Dono" : "Funcionário"}
-                  </span>
-                  {u.uid !== usuarioAtual?.uid && (
-                    <button className="btn-icon" onClick={() => removerUsuario(u)} title="Remover acesso">
-                      <Icon name="close" size={13} />
+                  <div className="user-role-wrap">
+                    <span className={`user-role ${u.cargo === "dono" ? "role-dono" : "role-func"}`}>
+                      {u.cargo === "dono" ? "Dono" : "Func."}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <button className="btn-icon" onClick={() => abrirEditarUsuario(u)} title="Editar usuário">
+                      <Icon name="edit" size={13} />
                     </button>
-                  )}
-                  {u.uid === usuarioAtual?.uid && (
-                    <span style={{ fontSize: 11, color: "var(--text2)", padding: "2px 8px" }}>Você</span>
-                  )}
+                    {u.uid !== usuarioAtual?.uid ? (
+                      <button className="btn-icon" onClick={() => setConfirmId(u.id)} title="Remover acesso" style={{ color: "var(--red)" }}>
+                        <Icon name="trash" size={13} />
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 10, color: "var(--text2)", padding: "2px 6px", whiteSpace: "nowrap" }}>Você</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -709,21 +750,30 @@ function GerenciarUsuarios({ usuarioAtual }) {
         </div>
       </div>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="Novo Usuário">
-        <form onSubmit={criarUsuario}>
+      <Modal open={modal} onClose={() => setModal(false)} title={editandoUsuario ? "Editar Usuário" : "Novo Usuário"}>
+        <form onSubmit={salvarUsuario}>
           <div className="form-grid" style={{ gap: 14 }}>
             <div className="input-group">
               <label className="input-label">Nome completo</label>
               <input className="input" placeholder="Ex: Maria Silva" value={form.nome} onChange={e => set("nome", e.target.value)} />
             </div>
-            <div className="input-group">
-              <label className="input-label">E-mail</label>
-              <input className="input" type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => set("email", e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Senha inicial (mín. 6 caracteres)</label>
-              <input className="input" type="text" placeholder="Senha para o funcionário" value={form.senha} onChange={e => set("senha", e.target.value)} />
-            </div>
+            {!editandoUsuario && (
+              <div className="input-group">
+                <label className="input-label">E-mail</label>
+                <input className="input" type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => set("email", e.target.value)} />
+              </div>
+            )}
+            {editandoUsuario && (
+              <div style={{ background: "rgba(77,166,255,0.07)", border: "1px solid rgba(77,166,255,0.2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 12, color: "var(--text2)" }}>
+                📧 E-mail: <strong style={{ color: "var(--text)" }}>{editandoUsuario.email}</strong> (não pode ser alterado)
+              </div>
+            )}
+            {!editandoUsuario && (
+              <div className="input-group">
+                <label className="input-label">Senha inicial (mín. 6 caracteres)</label>
+                <input className="input" type="text" placeholder="Senha para o funcionário" value={form.senha} onChange={e => set("senha", e.target.value)} />
+              </div>
+            )}
             <div className="input-group">
               <label className="input-label">Cargo</label>
               <select className="input" value={form.cargo} onChange={e => set("cargo", e.target.value)}>
@@ -731,16 +781,27 @@ function GerenciarUsuarios({ usuarioAtual }) {
                 <option value="dono">Dono / Admin</option>
               </select>
             </div>
-            <div style={{ background: "rgba(77,166,255,0.07)", border: "1px solid rgba(77,166,255,0.2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 12, color: "var(--text2)" }}>
-              💡 Passe o e-mail e senha para o funcionário. Ele pode trocar a senha depois no Firebase Console.
-            </div>
+            {!editandoUsuario && (
+              <div style={{ background: "rgba(77,166,255,0.07)", border: "1px solid rgba(77,166,255,0.2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 12, color: "var(--text2)" }}>
+                💡 Passe o e-mail e senha para o funcionário. Ele pode trocar a senha depois.
+              </div>
+            )}
           </div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? "Criando..." : "Criar Usuário"}</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? "Salvando..." : editandoUsuario ? "Salvar Alterações" : "Criar Usuário"}
+            </button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog open={!!confirmId}
+        title="Remover Usuário?"
+        text={`Remover ${usuarioParaRemover?.nome || "este usuário"} do sistema? Ele não poderá mais fazer login.`}
+        danger
+        onConfirm={() => removerUsuario(usuarioParaRemover)}
+        onCancel={() => setConfirmId(null)} />
     </div>
   );
 }
@@ -751,9 +812,10 @@ function GerenciarUsuarios({ usuarioAtual }) {
 function Dashboard({ dados }) {
   const transacoes = dados.transacoes || [];
   const hoje = new Date().toDateString();
-  const totalReceitas = transacoes.filter(t => t.tipo === "venda").reduce((s, t) => s + t.valor, 0);
-  const totalDespesas = transacoes.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
+  const totalReceitas = transacoes.filter(t => t.tipo === "venda").reduce((s, t) => s + (t.valor || 0), 0);
+  const totalDespesas = transacoes.filter(t => t.tipo === "despesa").reduce((s, t) => s + (t.valor || 0), 0);
   const saldo = totalReceitas - totalDespesas;
+  const hojeVendas = transacoes.filter(t => t.tipo === "venda" && new Date(t.data).toDateString() === hoje).reduce((s,t) => s + (t.valor||0), 0);
   const hojeCount = transacoes.filter(t => new Date(t.data).toDateString() === hoje).length;
   const produtosAbaixo = (dados.produtos || []).filter(p => p.quantidadeEstoque <= p.quantidadeMinima);
   const ultimas = [...transacoes].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 8);
@@ -785,8 +847,8 @@ function Dashboard({ dados }) {
         </div>
         <div className="stat-card gold">
           <div className="stat-label">Hoje</div>
-          <div className="stat-value">{hojeCount}</div>
-          <div className="stat-sub">Transações</div>
+          <div className="stat-value">{formatBRL(hojeVendas)}</div>
+          <div className="stat-sub">{hojeCount} transação(ões)</div>
         </div>
       </div>
 
@@ -1354,7 +1416,296 @@ function Categorias({ dados, onAdicionar, onRemover }) {
 }
 
 // ─────────────────────────────────────────────
-// SIDEBAR
+// RELATÓRIO PDF
+// ─────────────────────────────────────────────
+function Relatorio({ dados }) {
+  const [periodo, setPeriodo] = useState("mes");
+  const [dataInicio, setDataInicio] = useState(() => {
+    const d = new Date(); d.setDate(1);
+    return d.toISOString().split("T")[0];
+  });
+  const [dataFim, setDataFim] = useState(() => new Date().toISOString().split("T")[0]);
+
+  const transacoes = dados.transacoes || [];
+  const produtos = dados.produtos || [];
+  const clientes = dados.clientes || [];
+
+  // Filtrar por período
+  const transacoesFiltradas = useMemo(() => {
+    let inicio, fim;
+    const hoje = new Date();
+    if (periodo === "mes") {
+      inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
+    } else if (periodo === "semana") {
+      const dia = hoje.getDay();
+      inicio = new Date(hoje); inicio.setDate(hoje.getDate() - dia); inicio.setHours(0,0,0,0);
+      fim = new Date(inicio); fim.setDate(inicio.getDate() + 6); fim.setHours(23,59,59,999);
+    } else if (periodo === "ano") {
+      inicio = new Date(hoje.getFullYear(), 0, 1);
+      fim = new Date(hoje.getFullYear(), 11, 31, 23, 59, 59);
+    } else {
+      inicio = new Date(dataInicio + "T00:00:00");
+      fim = new Date(dataFim + "T23:59:59");
+    }
+    return transacoes.filter(t => {
+      const d = new Date(t.data);
+      return d >= inicio && d <= fim;
+    });
+  }, [transacoes, periodo, dataInicio, dataFim]);
+
+  const totalVendas = transacoesFiltradas.filter(t => t.tipo === "venda").reduce((s, t) => s + (t.valor||0), 0);
+  const totalDespesas = transacoesFiltradas.filter(t => t.tipo === "despesa").reduce((s, t) => s + (t.valor||0), 0);
+  const lucroLiquido = totalVendas - totalDespesas;
+
+  function nomeCliente(id) {
+    const c = clientes.find(x => x.id === id);
+    return c ? c.nome : "";
+  }
+
+  function periodoLabel() {
+    if (periodo === "mes") return `Mês Atual (${new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })})`;
+    if (periodo === "semana") return "Semana Atual";
+    if (periodo === "ano") return `Ano ${new Date().getFullYear()}`;
+    return `${formatData(dataInicio)} a ${formatData(dataFim)}`;
+  }
+
+  function gerarPDF() {
+    const vendas = transacoesFiltradas.filter(t => t.tipo === "venda");
+    const despesas = transacoesFiltradas.filter(t => t.tipo === "despesa");
+
+    const linhasVendas = vendas.map(t =>
+      `<tr>
+        <td>${formatData(t.data)}</td>
+        <td>${t.descricao}</td>
+        <td>${nomeCliente(t.cliente) || "—"}</td>
+        <td style="text-align:right; color:#16a34a; font-weight:600">${formatBRL(t.valor)}</td>
+      </tr>`
+    ).join("");
+
+    const linhasDespesas = despesas.map(t =>
+      `<tr>
+        <td>${formatData(t.data)}</td>
+        <td>${t.descricao}</td>
+        <td>${t.observacoes || "—"}</td>
+        <td style="text-align:right; color:#dc2626; font-weight:600">${formatBRL(t.valor)}</td>
+      </tr>`
+    ).join("");
+
+    const linhasEstoque = produtos.map(p =>
+      `<tr>
+        <td>${p.nome}</td>
+        <td>${p.sku || "—"}</td>
+        <td style="text-align:center">${p.quantidadeEstoque}</td>
+        <td>${formatBRL(p.precoCompra)}</td>
+        <td style="font-weight:600">${formatBRL(p.precoVenda)}</td>
+      </tr>`
+    ).join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Relatório FitMGwear</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #111; font-size: 13px; }
+    .header { background: #0c0c0c; color: #fff; padding: 28px 40px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 26px; letter-spacing: 3px; color: #e8b84b; }
+    .header p { font-size: 12px; color: #888; margin-top: 4px; }
+    .header-right { text-align: right; font-size: 12px; color: #888; }
+    .content { padding: 32px 40px; }
+    .periodo-badge { display: inline-block; background: #fef3c7; color: #92400e; padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 700; margin-bottom: 24px; }
+    .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 32px; }
+    .stat { border-radius: 8px; padding: 20px; text-align: center; }
+    .stat.green { background: #f0fdf4; border: 1px solid #86efac; }
+    .stat.red { background: #fef2f2; border: 1px solid #fca5a5; }
+    .stat.blue { background: #eff6ff; border: 1px solid #93c5fd; }
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: #6b7280; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 800; }
+    .stat.green .stat-value { color: #16a34a; }
+    .stat.red .stat-value { color: #dc2626; }
+    .stat.blue .stat-value { color: #2563eb; }
+    h2 { font-size: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #374151; margin-bottom: 12px; border-bottom: 2px solid #f3f4f6; padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+    th { background: #f9fafb; padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; font-size: 12.5px; }
+    tr:last-child td { border-bottom: none; }
+    .empty { text-align: center; color: #9ca3af; padding: 20px; font-style: italic; }
+    .footer { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>FITMGWEAR</h1>
+      <p>Sistema de Gestão — Relatório Financeiro</p>
+    </div>
+    <div class="header-right">
+      <div>Gerado em: ${new Date().toLocaleDateString("pt-BR", { dateStyle: "full" })}</div>
+      <div>${new Date().toLocaleTimeString("pt-BR")}</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="periodo-badge">📅 Período: ${periodoLabel()}</div>
+    <div class="stats">
+      <div class="stat green">
+        <div class="stat-label">Total de Vendas</div>
+        <div class="stat-value">${formatBRL(totalVendas)}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px">${vendas.length} transação(ões)</div>
+      </div>
+      <div class="stat red">
+        <div class="stat-label">Total de Despesas</div>
+        <div class="stat-value">${formatBRL(totalDespesas)}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px">${despesas.length} transação(ões)</div>
+      </div>
+      <div class="stat blue">
+        <div class="stat-label">Lucro Líquido</div>
+        <div class="stat-value" style="color:${lucroLiquido >= 0 ? '#2563eb' : '#dc2626'}">${formatBRL(lucroLiquido)}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px">${lucroLiquido >= 0 ? "✓ Positivo" : "⚠ Negativo"}</div>
+      </div>
+    </div>
+
+    <h2>Vendas (${vendas.length})</h2>
+    ${vendas.length > 0 ? `
+    <table>
+      <thead><tr><th>Data</th><th>Descrição</th><th>Cliente</th><th style="text-align:right">Valor</th></tr></thead>
+      <tbody>${linhasVendas}</tbody>
+    </table>` : `<p class="empty">Nenhuma venda no período</p><br/>`}
+
+    <h2>Despesas (${despesas.length})</h2>
+    ${despesas.length > 0 ? `
+    <table>
+      <thead><tr><th>Data</th><th>Descrição</th><th>Obs.</th><th style="text-align:right">Valor</th></tr></thead>
+      <tbody>${linhasDespesas}</tbody>
+    </table>` : `<p class="empty">Nenhuma despesa no período</p><br/>`}
+
+    <h2>Estoque Atual (${produtos.length} produtos)</h2>
+    ${produtos.length > 0 ? `
+    <table>
+      <thead><tr><th>Produto</th><th>SKU</th><th style="text-align:center">Qtd</th><th>Compra</th><th>Venda</th></tr></thead>
+      <tbody>${linhasEstoque}</tbody>
+    </table>` : `<p class="empty">Nenhum produto cadastrado</p>`}
+
+    <div class="footer">FitMGwear Gestão — Relatório gerado automaticamente</div>
+  </div>
+  <script>window.onload = () => window.print();</script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, "_blank");
+    if (!win) {
+      // fallback: download direto
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `relatorio-fitmgwear-${new Date().toISOString().split("T")[0]}.html`;
+      a.click();
+    }
+    toast("Relatório aberto! Use Ctrl+P para imprimir/salvar como PDF.");
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><h1 className="page-title">Relatório</h1><p className="page-sub">Gere relatórios financeiros para exportar em PDF</p></div>
+      </div>
+
+      {/* Filtros */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-body">
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div className="input-group" style={{ flex: "0 0 auto" }}>
+              <label className="input-label">Período</label>
+              <select className="input" style={{ minWidth: 160 }} value={periodo} onChange={e => setPeriodo(e.target.value)}>
+                <option value="semana">Esta Semana</option>
+                <option value="mes">Este Mês</option>
+                <option value="ano">Este Ano</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+            {periodo === "custom" && (
+              <>
+                <div className="input-group">
+                  <label className="input-label">De</label>
+                  <input className="input" type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Até</label>
+                  <input className="input" type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div className="stats-grid" style={{ marginBottom: 20 }}>
+        <div className="stat-card green">
+          <div className="stat-label">Vendas no Período</div>
+          <div className="stat-value">{formatBRL(totalVendas)}</div>
+          <div className="stat-sub">{transacoesFiltradas.filter(t=>t.tipo==="venda").length} transações</div>
+        </div>
+        <div className="stat-card red">
+          <div className="stat-label">Despesas no Período</div>
+          <div className="stat-value">{formatBRL(totalDespesas)}</div>
+          <div className="stat-sub">{transacoesFiltradas.filter(t=>t.tipo==="despesa").length} transações</div>
+        </div>
+        <div className={`stat-card ${lucroLiquido >= 0 ? "blue" : "red"}`}>
+          <div className="stat-label">Lucro Líquido</div>
+          <div className="stat-value">{formatBRL(lucroLiquido)}</div>
+          <div className="stat-sub">{lucroLiquido >= 0 ? "Positivo ✓" : "Negativo ⚠"}</div>
+        </div>
+        <div className="stat-card gold">
+          <div className="stat-label">Total Transações</div>
+          <div className="stat-value">{transacoesFiltradas.length}</div>
+          <div className="stat-sub">{periodoLabel()}</div>
+        </div>
+      </div>
+
+      {/* Preview tabela */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header" style={{ padding: "18px 20px 14px" }}>
+          <span className="card-title">Preview — Transações do Período</span>
+        </div>
+        <div className="table-wrap">
+          {transacoesFiltradas.length === 0 ? (
+            <div className="empty-state"><div className="empty-icon">📋</div><div className="empty-text">Nenhuma transação no período selecionado</div></div>
+          ) : (
+            <table>
+              <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style={{ textAlign: "right" }}>Valor</th></tr></thead>
+              <tbody>
+                {[...transacoesFiltradas].sort((a,b) => new Date(b.data)-new Date(a.data)).slice(0, 15).map(t => (
+                  <tr key={t.id}>
+                    <td style={{ color: "var(--text2)" }}>{formatData(t.data)}</td>
+                    <td>{t.descricao}</td>
+                    <td><span className={`badge ${t.tipo === "venda" ? "badge-green" : "badge-red"}`}>{t.tipo === "venda" ? "Venda" : "Despesa"}</span></td>
+                    <td style={{ fontWeight: 700, color: t.tipo === "venda" ? "var(--green)" : "var(--red)", textAlign: "right" }}>{formatBRL(t.valor)}</td>
+                  </tr>
+                ))}
+                {transacoesFiltradas.length > 15 && (
+                  <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--text2)", fontSize: 12, padding: 10 }}>... e mais {transacoesFiltradas.length - 15} transações no PDF</td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button className="btn btn-primary" style={{ padding: "12px 28px", fontSize: 15 }} onClick={gerarPDF}>
+          <Icon name="download" size={18} />
+          Gerar & Baixar PDF
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // ─────────────────────────────────────────────
 const NAV_BASE = [
   { id: "painel", label: "Painel", icon: "dashboard", group: "Principal" },
@@ -1364,6 +1715,7 @@ const NAV_BASE = [
   { id: "estoque", label: "Estoque", icon: "stock", group: "Dados" },
   { id: "clientes", label: "Clientes", icon: "clients", group: "Dados" },
   { id: "categorias", label: "Categorias", icon: "categories", group: "Dados" },
+  { id: "relatorio", label: "Relatório PDF", icon: "download", group: "Dados" },
 ];
 const NAV_DONO = [
   { id: "usuarios", label: "Usuários", icon: "clients", group: "Admin" },
@@ -1508,7 +1860,15 @@ export default function App() {
   // CRUD — Firebase
   async function adicionarTransacao(t) {
     const id = uid();
-    const novaT = { ...t, id, data: t.data || new Date().toISOString() };
+    // Garantir que a data seja sempre ISO string completa
+    let dataISO = t.data;
+    if (dataISO && dataISO.length === 10) {
+      // vem como "2025-01-15", converter para ISO com hora local
+      dataISO = new Date(dataISO + "T12:00:00").toISOString();
+    } else if (!dataISO) {
+      dataISO = new Date().toISOString();
+    }
+    const novaT = { ...t, id, data: dataISO };
     if (t.produtoId && t.tipo === "venda") {
       const prod = produtos.find(p => p.id === t.produtoId);
       if (prod) {
@@ -1516,7 +1876,7 @@ export default function App() {
       }
     }
     await setDoc(doc(db, "transacoes", id), novaT);
-    toast(t.tipo === "venda" ? "Venda registrada! ✓" : "Despesa registrada");
+    toast(t.tipo === "venda" ? "Venda registrada! ✓" : "Despesa registrada! ✓");
     setPage("transacoes");
   }
 
@@ -1594,6 +1954,7 @@ export default function App() {
     if (page === "clientes") return <Clientes dados={dados} onAdicionar={adicionarCliente} onRemover={removerCliente} />;
     if (page === "categorias") return <Categorias dados={dados} onAdicionar={adicionarCategoria} onRemover={removerCategoria} />;
     if (page === "usuarios" && isDono) return <GerenciarUsuarios usuarioAtual={usuario} />;
+    if (page === "relatorio") return <Relatorio dados={dados} />;
   }
 
   return (
