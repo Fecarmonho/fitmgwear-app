@@ -3,7 +3,6 @@ import logoImg from "./logo.png";
 
 // ─────────────────────────────────────────────
 // FIREBASE CONFIG
-// Substitua com suas credenciais do Firebase Console
 // ─────────────────────────────────────────────
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs } from "firebase/firestore";
@@ -38,8 +37,6 @@ function formatData(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("pt-BR");
 }
-
-const LOGO_B64 = "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";
 
 // ─────────────────────────────────────────────
 // CSS
@@ -198,9 +195,12 @@ const CSS = `
   .btn-success:hover { background: rgba(62,207,142,0.22); }
   .btn-danger { background: rgba(240,96,96,0.1); color: var(--red); border: 1px solid rgba(240,96,96,0.2); }
   .btn-danger:hover { background: rgba(240,96,96,0.2); }
+  .btn-info { background: rgba(77,166,255,0.1); color: var(--blue); border: 1px solid rgba(77,166,255,0.2); }
+  .btn-info:hover { background: rgba(77,166,255,0.2); }
   .btn-sm { padding: 6px 13px; font-size: 12px; }
   .btn-icon { padding: 7px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .btn-icon:hover { color: var(--text); background: var(--surface3); }
+  .btn-icon.danger:hover { color: var(--red); background: rgba(240,96,96,0.1); border-color: rgba(240,96,96,0.3); }
   .btn-icon svg { width: 14px; height: 14px; }
 
   /* ── INPUTS ── */
@@ -280,18 +280,6 @@ const CSS = `
   .login-bg { position:absolute; inset:0; pointer-events:none; }
   .login-blob { position:absolute; border-radius:50%; filter:blur(90px); opacity:0.18; }
   .login-error { background:rgba(240,96,96,0.1); border:1px solid rgba(240,96,96,0.3); border-radius:var(--radius-sm); padding:10px 14px; font-size:13px; color:var(--red); margin-bottom:16px; }
-  .login-tabs { display:flex; gap:0; margin-bottom:24px; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border2); }
-  .login-tab { flex:1; padding:9px; font-size:13px; font-weight:600; cursor:pointer; background:none; border:none; color:var(--text2); font-family:'DM Sans',sans-serif; transition:all 0.15s; }
-  .login-tab.active { background:var(--accent); color:#000; }
-  .users-grid { display:grid; gap:10px; margin-top:16px; }
-  .user-row { display:flex; align-items:center; gap:12px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; }
-  .user-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
-  .user-info { flex:1; min-width:0; }
-  .user-name { font-size:13px; font-weight:600; color:var(--text); }
-  .user-email { font-size:11px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .user-role { font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; }
-  .role-dono { background:rgba(232,184,75,0.15); color:var(--accent); }
-  .role-func { background:rgba(77,166,255,0.12); color:var(--blue); }
   .login-card {
     background:var(--surface); border:1px solid var(--border2); border-radius:16px;
     padding:44px 40px; width:100%; max-width:420px; position:relative; z-index:1;
@@ -311,6 +299,41 @@ const CSS = `
   .toast.error .toast-dot { background:var(--red); }
   .toast.info .toast-dot { background:var(--blue); }
 
+  /* ── USUARIOS (cards mobile-friendly) ── */
+  .usuarios-grid { display: grid; gap: 12px; }
+  .usuario-card {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .usuario-card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .usuario-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px; flex-shrink: 0;
+  }
+  .usuario-info { flex: 1; min-width: 0; }
+  .usuario-nome { font-size: 14px; font-weight: 700; color: var(--text); word-break: break-word; }
+  .usuario-email { font-size: 12px; color: var(--text2); word-break: break-all; margin-top: 2px; }
+  .usuario-card-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    gap: 8px;
+  }
+  .usuario-role { font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 99px; }
+  .role-dono { background: rgba(232,184,75,0.15); color: var(--accent); }
+  .role-func { background: rgba(77,166,255,0.12); color: var(--blue); }
+  .usuario-self-badge { font-size: 11px; color: var(--text2); padding: 4px 8px; border-radius: 99px; background: var(--surface3); }
+
   /* ── MISC ── */
   .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99; }
   .empty-state { padding:52px; text-align:center; color:var(--text2); }
@@ -329,14 +352,13 @@ const CSS = `
   .confirm-text { font-size:13px; color:var(--text2); margin-bottom:22px; }
   .confirm-actions { display:flex; gap:10px; justify-content:flex-end; }
   .product-thumb { width:36px; height:36px; border-radius:8px; background:var(--surface3); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
-  .stock-alert { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--yellow); }
 
   /* ── LOADING ── */
   .loading-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:var(--bg); }
   .spinner { width:32px; height:32px; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
   @keyframes spin { to{transform:rotate(360deg)} }
 
-  /* ── RESPONSIVE PC ── */
+  /* ── RESPONSIVE ── */
   @media (max-width: 1200px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .page { padding: 28px 28px; }
@@ -353,7 +375,6 @@ const CSS = `
   @media (max-width: 420px) {
     .stats-grid { grid-template-columns: 1fr; }
   }
-
 `;
 
 // ─────────────────────────────────────────────
@@ -367,8 +388,8 @@ const Icon = ({ name, size = 16 }) => {
     stock: <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z" fill="currentColor"/>,
     clients: <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/>,
     categories: <path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5S15.01 22 17.5 22s4.5-2.01 4.5-4.5S19.99 13 17.5 13zm0 7c-1.38 0-2.5-1.12-2.5-2.5S16.12 15 17.5 15s2.5 1.12 2.5 2.5S18.88 20 17.5 20zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z" fill="currentColor"/>,
+    pdf: <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z" fill="currentColor"/>,
     download: <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>,
-    upload: <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" fill="currentColor"/>,
     trash: <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>,
     edit: <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>,
     plus: <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>,
@@ -456,7 +477,7 @@ function ConfirmDialog({ open, title, text, onConfirm, onCancel, danger }) {
 }
 
 // ─────────────────────────────────────────────
-// LOGIN — Firebase Auth
+// LOGIN
 // ─────────────────────────────────────────────
 function LoginScreen({ primeiroAcesso }) {
   const [email, setEmail] = useState("");
@@ -531,7 +552,6 @@ function LoginScreen({ primeiroAcesso }) {
           <div className="login-logo-img"><img src={logoImg} alt="FitMGwear" /></div>
           <div className="login-logo-text"><h1>FITMGWEAR</h1><p>Sistema de Gestão</p></div>
         </div>
-
         {primeiroAcesso ? (
           <>
             <div style={{ background: "rgba(232,184,75,0.08)", border: "1px solid rgba(232,184,75,0.25)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, color: "var(--accent)", marginBottom: 20 }}>
@@ -540,73 +560,51 @@ function LoginScreen({ primeiroAcesso }) {
             {erro && <div className="login-error">⚠️ {erro}</div>}
             <form onSubmit={criarDono}>
               <div className="form-grid" style={{ gap: 14 }}>
-                <div className="input-group">
-                  <label className="input-label">Seu Nome</label>
-                  <input className="input" placeholder="Ex: João Silva" value={nome} onChange={e => setNome(e.target.value)} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">E-mail</label>
-                  <input className="input" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
-                </div>
+                <div className="input-group"><label className="input-label">Seu Nome</label><input className="input" placeholder="Ex: João Silva" value={nome} onChange={e => setNome(e.target.value)} /></div>
+                <div className="input-group"><label className="input-label">E-mail</label><input className="input" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" /></div>
                 <div className="input-group">
                   <label className="input-label">Senha (mín. 6 caracteres)</label>
                   <div style={{ position: "relative" }}>
                     <input className="input" type={show ? "text" : "password"} placeholder="Crie uma senha forte" value={senha} onChange={e => setSenha(e.target.value)} style={{ paddingRight: 40 }} />
-                    <button type="button" onClick={() => setShow(!show)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text2)", cursor: "pointer" }}>
-                      <Icon name={show ? "eyeoff" : "eye"} size={16} />
-                    </button>
+                    <button type="button" onClick={() => setShow(!show)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text2)", cursor: "pointer" }}><Icon name={show ? "eyeoff" : "eye"} size={16} /></button>
                   </div>
                 </div>
-                <div className="input-group">
-                  <label className="input-label">Confirmar Senha</label>
-                  <input className="input" type={show ? "text" : "password"} placeholder="Repita a senha" value={confirmar} onChange={e => setConfirmar(e.target.value)} />
-                </div>
+                <div className="input-group"><label className="input-label">Confirmar Senha</label><input className="input" type={show ? "text" : "password"} placeholder="Repita a senha" value={confirmar} onChange={e => setConfirmar(e.target.value)} /></div>
                 <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: "100%", marginTop: 4, padding: "11px", opacity: loading ? 0.7 : 1 }}>
-                  <Icon name="check" size={15} />
-                  {loading ? "Criando conta..." : "Criar Conta e Entrar"}
+                  <Icon name="check" size={15} />{loading ? "Criando conta..." : "Criar Conta e Entrar"}
                 </button>
               </div>
             </form>
           </>
         ) : (
           <>
-            <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 20 }}>
-              Entre com seu e-mail e senha para acessar
-            </p>
+            <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 20 }}>Entre com seu e-mail e senha para acessar</p>
             {erro && <div className="login-error">⚠️ {erro}</div>}
             <form onSubmit={entrar}>
               <div className="form-grid" style={{ gap: 14 }}>
-                <div className="input-group">
-                  <label className="input-label">E-mail</label>
-                  <input className="input" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
-                </div>
+                <div className="input-group"><label className="input-label">E-mail</label><input className="input" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" /></div>
                 <div className="input-group">
                   <label className="input-label">Senha</label>
                   <div style={{ position: "relative" }}>
                     <input className="input" type={show ? "text" : "password"} placeholder="Digite sua senha" value={senha} onChange={e => setSenha(e.target.value)} style={{ paddingRight: 40 }} autoComplete="current-password" />
-                    <button type="button" onClick={() => setShow(!show)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text2)", cursor: "pointer" }}>
-                      <Icon name={show ? "eyeoff" : "eye"} size={16} />
-                    </button>
+                    <button type="button" onClick={() => setShow(!show)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text2)", cursor: "pointer" }}><Icon name={show ? "eyeoff" : "eye"} size={16} /></button>
                   </div>
                 </div>
                 <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: "100%", marginTop: 4, padding: "11px", opacity: loading ? 0.7 : 1 }}>
-                  <Icon name="lock" size={15} />
-                  {loading ? "Entrando..." : "Entrar"}
+                  <Icon name="lock" size={15} />{loading ? "Entrando..." : "Entrar"}
                 </button>
               </div>
             </form>
           </>
         )}
-        <p style={{ textAlign: "center", fontSize: 11, color: "var(--text2)", marginTop: 20 }}>
-          ☁️ Dados sincronizados em tempo real
-        </p>
+        <p style={{ textAlign: "center", fontSize: 11, color: "var(--text2)", marginTop: 20 }}>☁️ Dados sincronizados em tempo real</p>
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// GERENCIAR USUÁRIOS (apenas dono)
+// GERENCIAR USUÁRIOS — cards mobile-friendly + botão excluir
 // ─────────────────────────────────────────────
 function GerenciarUsuarios({ usuarioAtual }) {
   const [usuarios, setUsuarios] = useState([]);
@@ -614,6 +612,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
   const [form, setForm] = useState({ nome: "", email: "", senha: "", cargo: "funcionario" });
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [confirmId, setConfirmId] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "usuarios"), snap => {
@@ -631,18 +630,13 @@ function GerenciarUsuarios({ usuarioAtual }) {
       return toast("Preencha todos os campos. Senha mínimo 6 caracteres.", "error");
     setLoading(true);
     try {
-      // Criar no Firebase Auth via API REST (sem trocar o usuário logado)
       const res = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${auth.app.options.apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email.trim(), password: form.senha, returnSecureToken: true })
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email.trim(), password: form.senha, returnSecureToken: true }) }
       );
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
-      // Salvar perfil no Firestore
       await setDoc(doc(db, "usuarios", data.localId), {
         uid: data.localId, nome: form.nome.trim(),
         email: form.email.trim(), cargo: form.cargo,
@@ -659,10 +653,15 @@ function GerenciarUsuarios({ usuarioAtual }) {
     }
   }
 
-  async function removerUsuario(u) {
+  async function confirmarRemover(u) {
     if (u.uid === usuarioAtual?.uid) return toast("Você não pode remover a si mesmo.", "error");
-    await deleteDoc(doc(db, "usuarios", u.id));
+    setConfirmId(u.id);
+  }
+
+  async function removerUsuario(id) {
+    await deleteDoc(doc(db, "usuarios", id));
     toast("Usuário removido do sistema.");
+    setConfirmId(null);
   }
 
   const cores = { dono: "#e8b84b", funcionario: "#4da6ff" };
@@ -681,29 +680,43 @@ function GerenciarUsuarios({ usuarioAtual }) {
           ) : usuarios.length === 0 ? (
             <div className="empty-state"><div className="empty-icon">👥</div><div className="empty-text">Nenhum usuário cadastrado ainda</div></div>
           ) : (
-            <div className="users-grid">
-              {usuarios.map(u => (
-                <div key={u.id} className="user-row">
-                  <div className="user-avatar" style={{ background: u.cargo === "dono" ? "rgba(232,184,75,0.15)" : "rgba(77,166,255,0.12)", color: cores[u.cargo] || "var(--text2)" }}>
-                    {(u.nome || u.email || "?")[0].toUpperCase()}
+            <div className="usuarios-grid">
+              {usuarios.map(u => {
+                const ehVoce = u.uid === usuarioAtual?.uid;
+                return (
+                  <div key={u.id} className="usuario-card">
+                    <div className="usuario-card-top">
+                      <div className="usuario-avatar" style={{
+                        background: u.cargo === "dono" ? "rgba(232,184,75,0.15)" : "rgba(77,166,255,0.12)",
+                        color: cores[u.cargo] || "var(--text2)"
+                      }}>
+                        {(u.nome || u.email || "?")[0].toUpperCase()}
+                      </div>
+                      <div className="usuario-info">
+                        <div className="usuario-nome">{u.nome || "Sem nome"}</div>
+                        <div className="usuario-email">{u.email}</div>
+                      </div>
+                    </div>
+                    <div className="usuario-card-bottom">
+                      <span className={`usuario-role ${u.cargo === "dono" ? "role-dono" : "role-func"}`}>
+                        {u.cargo === "dono" ? "👑 Dono" : "👤 Funcionário"}
+                      </span>
+                      {ehVoce ? (
+                        <span className="usuario-self-badge">Você</span>
+                      ) : (
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => confirmarRemover(u)}
+                          title="Remover acesso"
+                        >
+                          <Icon name="trash" size={13} />
+                          Remover
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="user-info">
-                    <div className="user-name">{u.nome || "Sem nome"}</div>
-                    <div className="user-email">{u.email}</div>
-                  </div>
-                  <span className={`user-role ${u.cargo === "dono" ? "role-dono" : "role-func"}`}>
-                    {u.cargo === "dono" ? "Dono" : "Funcionário"}
-                  </span>
-                  {u.uid !== usuarioAtual?.uid && (
-                    <button className="btn-icon" onClick={() => removerUsuario(u)} title="Remover acesso">
-                      <Icon name="close" size={13} />
-                    </button>
-                  )}
-                  {u.uid === usuarioAtual?.uid && (
-                    <span style={{ fontSize: 11, color: "var(--text2)", padding: "2px 8px" }}>Você</span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -712,18 +725,9 @@ function GerenciarUsuarios({ usuarioAtual }) {
       <Modal open={modal} onClose={() => setModal(false)} title="Novo Usuário">
         <form onSubmit={criarUsuario}>
           <div className="form-grid" style={{ gap: 14 }}>
-            <div className="input-group">
-              <label className="input-label">Nome completo</label>
-              <input className="input" placeholder="Ex: Maria Silva" value={form.nome} onChange={e => set("nome", e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">E-mail</label>
-              <input className="input" type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => set("email", e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Senha inicial (mín. 6 caracteres)</label>
-              <input className="input" type="text" placeholder="Senha para o funcionário" value={form.senha} onChange={e => set("senha", e.target.value)} />
-            </div>
+            <div className="input-group"><label className="input-label">Nome completo</label><input className="input" placeholder="Ex: Maria Silva" value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">E-mail</label><input className="input" type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => set("email", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Senha inicial (mín. 6 caracteres)</label><input className="input" type="text" placeholder="Senha para o funcionário" value={form.senha} onChange={e => set("senha", e.target.value)} /></div>
             <div className="input-group">
               <label className="input-label">Cargo</label>
               <select className="input" value={form.cargo} onChange={e => set("cargo", e.target.value)}>
@@ -741,6 +745,219 @@ function GerenciarUsuarios({ usuarioAtual }) {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!confirmId}
+        title="Remover Usuário?"
+        text="O usuário perderá acesso ao sistema. Esta ação não pode ser desfeita."
+        danger
+        onConfirm={() => removerUsuario(confirmId)}
+        onCancel={() => setConfirmId(null)}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// RELATÓRIO PDF — gerado via HTML/CSS e print
+// ─────────────────────────────────────────────
+function RelatorioPDF({ dados }) {
+  const transacoes = dados.transacoes || [];
+  const produtos = dados.produtos || [];
+
+  const totalReceitas = transacoes.filter(t => t.tipo === "venda").reduce((s, t) => s + t.valor, 0);
+  const totalDespesas = transacoes.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
+  const saldo = totalReceitas - totalDespesas;
+
+  const [mes, setMes] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const transacoesFiltradas = useMemo(() => {
+    return transacoes
+      .filter(t => t.data && t.data.startsWith(mes))
+      .sort((a, b) => new Date(b.data) - new Date(a.data));
+  }, [transacoes, mes]);
+
+  const receitasMes = transacoesFiltradas.filter(t => t.tipo === "venda").reduce((s, t) => s + t.valor, 0);
+  const despesasMes = transacoesFiltradas.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
+  const saldoMes = receitasMes - despesasMes;
+
+  const produtosAbaixo = produtos.filter(p => p.quantidadeEstoque <= p.quantidadeMinima);
+
+  function gerarPDF() {
+    const [ano, mesNum] = mes.split("-");
+    const nomeMes = new Date(parseInt(ano), parseInt(mesNum) - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
+
+    const linhasTransacoes = transacoesFiltradas.map(t => `
+      <tr>
+        <td>${formatData(t.data)}</td>
+        <td>${t.descricao || "—"}</td>
+        <td style="color:${t.tipo === "venda" ? "#22c55e" : "#ef4444"}">${t.tipo === "venda" ? "Venda" : "Despesa"}</td>
+        <td style="text-align:right;font-weight:600;color:${t.tipo === "venda" ? "#22c55e" : "#ef4444"}">${formatBRL(t.valor)}</td>
+      </tr>
+    `).join("");
+
+    const linhasProdutos = produtos.map(p => {
+      const margem = p.precoCompra > 0 ? ((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(0) : "—";
+      const alerta = p.quantidadeEstoque <= p.quantidadeMinima ? "⚠️" : "";
+      return `
+        <tr>
+          <td>${p.nome}</td>
+          <td>${p.sku || "—"}</td>
+          <td style="text-align:center">${alerta} ${p.quantidadeEstoque}</td>
+          <td>${formatBRL(p.precoCompra)}</td>
+          <td style="font-weight:600">${formatBRL(p.precoVenda)}</td>
+          <td style="text-align:center">${margem}%</td>
+        </tr>
+      `;
+    }).join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório FitMGwear — ${nomeMes}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; background: #fff; padding: 32px; }
+  h1 { font-size: 26px; font-weight: 900; letter-spacing: 3px; color: #e8b84b; margin-bottom: 2px; }
+  h2 { font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin: 24px 0 10px; color: #333; border-bottom: 2px solid #e8b84b; padding-bottom: 4px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 1px solid #ddd; padding-bottom: 16px; }
+  .header-right { text-align: right; font-size: 11px; color: #666; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat { padding: 14px 16px; border-radius: 8px; border: 1px solid #ddd; }
+  .stat-label { font-size: 10px; text-transform: uppercase; color: #666; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .stat-value { font-size: 20px; font-weight: 900; }
+  .green { color: #22c55e; } .red { color: #ef4444; } .blue { color: #3b82f6; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th { text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; background: #f5f5f5; border-bottom: 1px solid #ddd; color: #666; }
+  td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 11px; }
+  tr:last-child td { border-bottom: none; }
+  .alerta { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 10px 14px; font-size: 11px; color: #92400e; margin-bottom: 16px; }
+  .footer { margin-top: 32px; font-size: 10px; color: #aaa; text-align: center; border-top: 1px solid #eee; padding-top: 12px; }
+  @media print { body { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>FITMGWEAR</h1>
+    <div style="font-size:12px;color:#666;margin-top:2px">Relatório Financeiro — ${nomeMes}</div>
+  </div>
+  <div class="header-right">
+    Gerado em: ${new Date().toLocaleDateString("pt-BR")}<br/>
+    ${new Date().toLocaleTimeString("pt-BR")}
+  </div>
+</div>
+
+<h2>📊 Resumo do Mês</h2>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Receitas</div><div class="stat-value green">${formatBRL(receitasMes)}</div></div>
+  <div class="stat"><div class="stat-label">Despesas</div><div class="stat-value red">${formatBRL(despesasMes)}</div></div>
+  <div class="stat"><div class="stat-label">Saldo</div><div class="stat-value ${saldoMes >= 0 ? "blue" : "red"}">${formatBRL(saldoMes)}</div></div>
+</div>
+
+<h2>📋 Resumo Geral (todos os períodos)</h2>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Total Receitas</div><div class="stat-value green">${formatBRL(totalReceitas)}</div></div>
+  <div class="stat"><div class="stat-label">Total Despesas</div><div class="stat-value red">${formatBRL(totalDespesas)}</div></div>
+  <div class="stat"><div class="stat-label">Saldo Geral</div><div class="stat-value ${saldo >= 0 ? "blue" : "red"}">${formatBRL(saldo)}</div></div>
+</div>
+
+${produtosAbaixo.length > 0 ? `
+<div class="alerta">⚠️ <strong>Estoque crítico:</strong> ${produtosAbaixo.map(p => `${p.nome} (${p.quantidadeEstoque} un.)`).join(", ")}</div>
+` : ""}
+
+<h2>💳 Transações do Mês (${transacoesFiltradas.length})</h2>
+${transacoesFiltradas.length === 0 ? "<p style='color:#aaa;padding:8px 0'>Nenhuma transação neste mês.</p>" : `
+<table>
+  <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead>
+  <tbody>${linhasTransacoes}</tbody>
+</table>`}
+
+<h2>📦 Estoque (${produtos.length} produtos)</h2>
+${produtos.length === 0 ? "<p style='color:#aaa;padding:8px 0'>Nenhum produto cadastrado.</p>" : `
+<table>
+  <thead><tr><th>Produto</th><th>SKU</th><th style="text-align:center">Estoque</th><th>Compra</th><th>Venda</th><th style="text-align:center">Margem</th></tr></thead>
+  <tbody>${linhasProdutos}</tbody>
+</table>`}
+
+<div class="footer">FitMGwear Sistema de Gestão • Relatório gerado automaticamente</div>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Relatório PDF</h1>
+          <p className="page-sub">Gere um relatório financeiro completo para imprimir ou salvar</p>
+        </div>
+        <button className="btn btn-primary" onClick={gerarPDF}>
+          <Icon name="download" />Gerar e Imprimir PDF
+        </button>
+      </div>
+
+      {/* Seletor de mês */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-body">
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div className="input-group" style={{ minWidth: 200 }}>
+              <label className="input-label">Mês do relatório</label>
+              <input className="input" type="month" value={mes} onChange={e => setMes(e.target.value)} />
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", paddingTop: 20 }}>
+              <div style={{ fontSize: 13 }}>
+                <span style={{ color: "var(--text2)" }}>Receitas: </span>
+                <span style={{ color: "var(--green)", fontWeight: 700 }}>{formatBRL(receitasMes)}</span>
+              </div>
+              <div style={{ fontSize: 13 }}>
+                <span style={{ color: "var(--text2)" }}>Despesas: </span>
+                <span style={{ color: "var(--red)", fontWeight: 700 }}>{formatBRL(despesasMes)}</span>
+              </div>
+              <div style={{ fontSize: 13 }}>
+                <span style={{ color: "var(--text2)" }}>Saldo: </span>
+                <span style={{ color: saldoMes >= 0 ? "var(--blue)" : "var(--red)", fontWeight: 700 }}>{formatBRL(saldoMes)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Preview das transações do mês */}
+      <div className="card">
+        <div className="card-header" style={{ padding: "18px 20px 14px" }}>
+          <span className="card-title">Transações do período ({transacoesFiltradas.length})</span>
+        </div>
+        <div className="table-wrap">
+          {transacoesFiltradas.length === 0 ? (
+            <div className="empty-state"><div className="empty-icon">📄</div><div className="empty-text">Nenhuma transação neste mês</div></div>
+          ) : (
+            <table>
+              <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style={{ textAlign: "right" }}>Valor</th></tr></thead>
+              <tbody>
+                {transacoesFiltradas.map(t => (
+                  <tr key={t.id}>
+                    <td style={{ color: "var(--text2)", whiteSpace: "nowrap" }}>{formatData(t.data)}</td>
+                    <td>{t.descricao}</td>
+                    <td><span className={`badge ${t.tipo === "venda" ? "badge-green" : "badge-red"}`}>{t.tipo === "venda" ? "Venda" : "Despesa"}</span></td>
+                    <td style={{ fontWeight: 700, color: t.tipo === "venda" ? "var(--green)" : "var(--red)", textAlign: "right" }}>{formatBRL(t.valor)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -761,35 +978,14 @@ function Dashboard({ dados }) {
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Painel de Controle</h1>
-          <p className="page-sub">Visão geral do seu negócio em tempo real</p>
-        </div>
+        <div><h1 className="page-title">Painel de Controle</h1><p className="page-sub">Visão geral do seu negócio em tempo real</p></div>
       </div>
-
       <div className="stats-grid">
-        <div className="stat-card green">
-          <div className="stat-label">Receitas Totais</div>
-          <div className="stat-value">{formatBRL(totalReceitas)}</div>
-          <div className="stat-sub">Total de vendas</div>
-        </div>
-        <div className="stat-card red">
-          <div className="stat-label">Despesas Totais</div>
-          <div className="stat-value">{formatBRL(totalDespesas)}</div>
-          <div className="stat-sub">Total de gastos</div>
-        </div>
-        <div className={`stat-card ${saldo >= 0 ? "blue" : "red"}`}>
-          <div className="stat-label">Saldo Líquido</div>
-          <div className="stat-value">{formatBRL(saldo)}</div>
-          <div className="stat-sub">{saldo >= 0 ? "Positivo ✓" : "Atenção!"}</div>
-        </div>
-        <div className="stat-card gold">
-          <div className="stat-label">Hoje</div>
-          <div className="stat-value">{hojeCount}</div>
-          <div className="stat-sub">Transações</div>
-        </div>
+        <div className="stat-card green"><div className="stat-label">Receitas Totais</div><div className="stat-value">{formatBRL(totalReceitas)}</div><div className="stat-sub">Total de vendas</div></div>
+        <div className="stat-card red"><div className="stat-label">Despesas Totais</div><div className="stat-value">{formatBRL(totalDespesas)}</div><div className="stat-sub">Total de gastos</div></div>
+        <div className={`stat-card ${saldo >= 0 ? "blue" : "red"}`}><div className="stat-label">Saldo Líquido</div><div className="stat-value">{formatBRL(saldo)}</div><div className="stat-sub">{saldo >= 0 ? "Positivo ✓" : "Atenção!"}</div></div>
+        <div className="stat-card gold"><div className="stat-label">Hoje</div><div className="stat-value">{hojeCount}</div><div className="stat-sub">Transações</div></div>
       </div>
-
       {produtosAbaixo.length > 0 && (
         <div className="card" style={{ marginBottom: 20, borderColor: "rgba(245,166,35,0.3)", background: "rgba(245,166,35,0.04)" }}>
           <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -801,11 +997,8 @@ function Dashboard({ dados }) {
           </div>
         </div>
       )}
-
       <div className="card">
-        <div className="card-header" style={{ padding: "20px 20px 14px" }}>
-          <span className="card-title">Últimas Transações</span>
-        </div>
+        <div className="card-header" style={{ padding: "20px 20px 14px" }}><span className="card-title">Últimas Transações</span></div>
         <div className="table-wrap">
           {ultimas.length === 0 ? (
             <div className="empty-state"><div className="empty-icon">📋</div><div className="empty-text">Nenhuma transação ainda</div></div>
@@ -831,7 +1024,7 @@ function Dashboard({ dados }) {
 }
 
 // ─────────────────────────────────────────────
-// FORM TRANSAÇÃO com margem em tempo real
+// FORM TRANSAÇÃO
 // ─────────────────────────────────────────────
 function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
@@ -842,11 +1035,8 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
 
   const categorias = (dados.categorias || []).filter(c => tipo === "venda" ? c.tipo === "receita" : c.tipo === "despesa");
   const produtos = dados.produtos || [];
-
-  // Produto selecionado
   const produtoSelecionado = produtos.find(p => p.id === form.produtoId);
 
-  // Calcular margem em tempo real
   const valorVenda = parseFloat(form.valor) || 0;
   const custoUnitario = produtoSelecionado ? produtoSelecionado.precoCompra : 0;
   const custoTotal = custoUnitario * form.quantidade;
@@ -880,8 +1070,20 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
       const prod = produtos.find(p => p.id === form.produtoId);
       if (!prod || prod.quantidadeEstoque < form.quantidade) return toast("Estoque insuficiente!", "error");
     }
-    const payload = { tipo, descricao: form.descricao, valor: parseFloat(form.valor), categoria: form.categoria || "", cliente: form.cliente || "", data: form.data || new Date().toISOString().split("T")[0], observacoes: form.observacoes || "", quantidade: form.quantidade || 1 };
-    if (form.produtoId && form.produtoId.trim() !== "") payload.produtoId = form.produtoId;
+    const payload = {
+      tipo,
+      descricao: form.descricao,
+      valor: parseFloat(form.valor),
+      categoria: form.categoria || "",
+      cliente: form.cliente || "",
+      data: form.data || new Date().toISOString().split("T")[0],
+      observacoes: form.observacoes || "",
+      quantidade: form.quantidade || 1
+    };
+    // Só inclui produtoId se for string válida e não vazia
+    if (form.produtoId && typeof form.produtoId === "string" && form.produtoId.trim() !== "") {
+      payload.produtoId = form.produtoId;
+    }
     onSalvar(payload);
   }
 
@@ -906,44 +1108,24 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
                 <input className="input" type="number" min="1" value={form.quantidade} onChange={e => handleQtd(e.target.value)} />
               </div>
             </div>
-
-            {/* MARGEM EM TEMPO REAL */}
             {produtoSelecionado && valorVenda > 0 && (
               <div className="margem-preview" style={{ marginTop: 14 }}>
-                <div className="margem-item">
-                  <span className="margem-item-label">Custo Total</span>
-                  <span className="margem-item-value" style={{ color: "var(--red)" }}>{formatBRL(custoTotal)}</span>
-                </div>
+                <div className="margem-item"><span className="margem-item-label">Custo Total</span><span className="margem-item-value" style={{ color: "var(--red)" }}>{formatBRL(custoTotal)}</span></div>
                 <div style={{ color: "var(--border2)", fontSize: 20 }}>→</div>
-                <div className="margem-item">
-                  <span className="margem-item-label">Venda</span>
-                  <span className="margem-item-value" style={{ color: "var(--green)" }}>{formatBRL(valorVenda)}</span>
-                </div>
+                <div className="margem-item"><span className="margem-item-label">Venda</span><span className="margem-item-value" style={{ color: "var(--green)" }}>{formatBRL(valorVenda)}</span></div>
                 <div style={{ color: "var(--border2)", fontSize: 20 }}>→</div>
-                <div className="margem-item">
-                  <span className="margem-item-label">Lucro</span>
-                  <span className="margem-item-value" style={{ color: lucro >= 0 ? "var(--green)" : "var(--red)" }}>{formatBRL(lucro)}</span>
-                </div>
+                <div className="margem-item"><span className="margem-item-label">Lucro</span><span className="margem-item-value" style={{ color: lucro >= 0 ? "var(--green)" : "var(--red)" }}>{formatBRL(lucro)}</span></div>
                 <div style={{ marginLeft: "auto" }}>
-                  <span className={`badge ${margem > 30 ? "badge-green" : margem > 10 ? "badge-gold" : "badge-red"}`} style={{ fontSize: 14, padding: "5px 12px" }}>
-                    {margem.toFixed(1)}% margem
-                  </span>
+                  <span className={`badge ${margem > 30 ? "badge-green" : margem > 10 ? "badge-gold" : "badge-red"}`} style={{ fontSize: 14, padding: "5px 12px" }}>{margem.toFixed(1)}% margem</span>
                 </div>
               </div>
             )}
           </div>
         </div>
       )}
-
       <div className="form-grid form-grid-2" style={{ marginBottom: 14 }}>
-        <div className="input-group">
-          <label className="input-label">Descrição *</label>
-          <input className="input" placeholder="Ex: Camiseta Dry-Fit" value={form.descricao} onChange={e => set("descricao", e.target.value)} />
-        </div>
-        <div className="input-group">
-          <label className="input-label">Valor (R$) *</label>
-          <input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.valor} onChange={e => set("valor", e.target.value)} />
-        </div>
+        <div className="input-group"><label className="input-label">Descrição *</label><input className="input" placeholder="Ex: Camiseta Dry-Fit" value={form.descricao} onChange={e => set("descricao", e.target.value)} /></div>
+        <div className="input-group"><label className="input-label">Valor (R$) *</label><input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.valor} onChange={e => set("valor", e.target.value)} /></div>
         <div className="input-group">
           <label className="input-label">Categoria</label>
           <select className="input" value={form.categoria} onChange={e => set("categoria", e.target.value)}>
@@ -960,10 +1142,7 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
             </select>
           </div>
         )}
-        <div className="input-group">
-          <label className="input-label">Data</label>
-          <input className="input" type="date" value={form.data} onChange={e => set("data", e.target.value)} />
-        </div>
+        <div className="input-group"><label className="input-label">Data</label><input className="input" type="date" value={form.data} onChange={e => set("data", e.target.value)} /></div>
         <div className="input-group" style={{ gridColumn: "1 / -1" }}>
           <label className="input-label">Observações</label>
           <textarea className="input" placeholder="Opcional..." value={form.observacoes} onChange={e => set("observacoes", e.target.value)} style={{ minHeight: 60 }} />
@@ -1003,12 +1182,8 @@ function Transacoes({ dados, onRemover }) {
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Transações</h1>
-          <p className="page-sub">Histórico completo de vendas e despesas</p>
-        </div>
+        <div><h1 className="page-title">Transações</h1><p className="page-sub">Histórico completo de vendas e despesas</p></div>
       </div>
-
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <input className="input" style={{ maxWidth: 260 }} placeholder="🔍 Buscar..." value={busca} onChange={e => setBusca(e.target.value)} />
         {["todos", "venda", "despesa"].map(f => (
@@ -1017,7 +1192,6 @@ function Transacoes({ dados, onRemover }) {
           </button>
         ))}
       </div>
-
       <div className="card">
         <div className="table-wrap">
           {transacoes.length === 0 ? (
@@ -1033,7 +1207,7 @@ function Transacoes({ dados, onRemover }) {
                     <td><span className={`badge ${t.tipo === "venda" ? "badge-green" : "badge-red"}`}>{t.tipo === "venda" ? "Venda" : "Despesa"}</span></td>
                     <td style={{ color: "var(--text2)" }}>{nomeCliente(t.cliente)}</td>
                     <td style={{ fontWeight: 700, color: t.tipo === "venda" ? "var(--green)" : "var(--red)", textAlign: "right", whiteSpace: "nowrap" }}>{formatBRL(t.valor)}</td>
-                    <td><button className="btn-icon" onClick={() => setConfirmId(t.id)}><Icon name="trash" /></button></td>
+                    <td><button className="btn-icon danger" onClick={() => setConfirmId(t.id)}><Icon name="trash" /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -1041,7 +1215,6 @@ function Transacoes({ dados, onRemover }) {
           )}
         </div>
       </div>
-
       <ConfirmDialog open={!!confirmId} title="Remover Transação?" text="Esta ação não pode ser desfeita." danger
         onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Transação removida"); }}
         onCancel={() => setConfirmId(null)} />
@@ -1059,8 +1232,6 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
   const [form, setForm] = useState({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "" });
 
   const produtos = dados.produtos || [];
-
-  // Margem em tempo real no form de produto
   const pc = parseFloat(form.precoCompra) || 0;
   const pv = parseFloat(form.precoVenda) || 0;
   const margemForm = pc > 0 && pv > 0 ? ((pv - pc) / pc * 100) : null;
@@ -1086,13 +1257,9 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Estoque</h1>
-          <p className="page-sub">Gerencie seus produtos e quantidades</p>
-        </div>
+        <div><h1 className="page-title">Estoque</h1><p className="page-sub">Gerencie seus produtos e quantidades</p></div>
         <button className="btn btn-primary" onClick={() => abrirModal()}><Icon name="plus" /> Novo Produto</button>
       </div>
-
       <div className="card">
         <div className="table-wrap">
           {produtos.length === 0 ? (
@@ -1109,10 +1276,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div className="product-thumb">👕</div>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{p.nome}</div>
-                            {p.descricao && <div style={{ fontSize: 11, color: "var(--text2)" }}>{p.descricao}</div>}
-                          </div>
+                          <div><div style={{ fontWeight: 600 }}>{p.nome}</div>{p.descricao && <div style={{ fontSize: 11, color: "var(--text2)" }}>{p.descricao}</div>}</div>
                         </div>
                       </td>
                       <td style={{ color: "var(--text2)", fontSize: 12 }}>{p.sku || "—"}</td>
@@ -1128,7 +1292,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button className="btn-icon" onClick={() => abrirModal(p)}><Icon name="edit" /></button>
-                          <button className="btn-icon" onClick={() => setConfirmId(p.id)}><Icon name="trash" /></button>
+                          <button className="btn-icon danger" onClick={() => setConfirmId(p.id)}><Icon name="trash" /></button>
                         </div>
                       </td>
                     </tr>
@@ -1139,66 +1303,28 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
           )}
         </div>
       </div>
-
       <Modal open={modal} onClose={() => setModal(false)} title={editando ? "Editar Produto" : "Novo Produto"} wide>
         <form onSubmit={submit}>
           <div className="form-grid form-grid-2">
-            <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-              <label className="input-label">Nome do Produto *</label>
-              <input className="input" placeholder="Ex: Camiseta Dry-Fit P" value={form.nome} onChange={e => set("nome", e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">SKU / Código</label>
-              <input className="input" placeholder="Ex: CAM-001" value={form.sku} onChange={e => set("sku", e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Descrição</label>
-              <input className="input" placeholder="Opcional" value={form.descricao} onChange={e => set("descricao", e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Preço de Compra (R$)</label>
-              <input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.precoCompra} onChange={e => set("precoCompra", e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Preço de Venda (R$) *</label>
-              <input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.precoVenda} onChange={e => set("precoVenda", e.target.value)} />
-            </div>
-
-            {/* Margem em tempo real no form de produto */}
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Nome do Produto *</label><input className="input" placeholder="Ex: Camiseta Dry-Fit P" value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">SKU / Código</label><input className="input" placeholder="Ex: CAM-001" value={form.sku} onChange={e => set("sku", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Descrição</label><input className="input" placeholder="Opcional" value={form.descricao} onChange={e => set("descricao", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Preço de Compra (R$)</label><input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.precoCompra} onChange={e => set("precoCompra", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Preço de Venda (R$) *</label><input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.precoVenda} onChange={e => set("precoVenda", e.target.value)} /></div>
             {margemForm !== null && (
               <div style={{ gridColumn: "1 / -1" }}>
                 <div className="margem-preview">
-                  <div className="margem-item">
-                    <span className="margem-item-label">Custo</span>
-                    <span className="margem-item-value" style={{ color: "var(--red)" }}>{formatBRL(pc)}</span>
-                  </div>
+                  <div className="margem-item"><span className="margem-item-label">Custo</span><span className="margem-item-value" style={{ color: "var(--red)" }}>{formatBRL(pc)}</span></div>
                   <div style={{ color: "var(--border2)", fontSize: 20 }}>→</div>
-                  <div className="margem-item">
-                    <span className="margem-item-label">Venda</span>
-                    <span className="margem-item-value" style={{ color: "var(--green)" }}>{formatBRL(pv)}</span>
-                  </div>
+                  <div className="margem-item"><span className="margem-item-label">Venda</span><span className="margem-item-value" style={{ color: "var(--green)" }}>{formatBRL(pv)}</span></div>
                   <div style={{ color: "var(--border2)", fontSize: 20 }}>→</div>
-                  <div className="margem-item">
-                    <span className="margem-item-label">Lucro Unitário</span>
-                    <span className="margem-item-value" style={{ color: pv >= pc ? "var(--green)" : "var(--red)" }}>{formatBRL(pv - pc)}</span>
-                  </div>
-                  <div style={{ marginLeft: "auto" }}>
-                    <span className={`badge ${margemForm > 30 ? "badge-green" : margemForm > 10 ? "badge-gold" : "badge-red"}`} style={{ fontSize: 14, padding: "5px 12px" }}>
-                      {margemForm.toFixed(1)}% margem
-                    </span>
-                  </div>
+                  <div className="margem-item"><span className="margem-item-label">Lucro Unitário</span><span className="margem-item-value" style={{ color: pv >= pc ? "var(--green)" : "var(--red)" }}>{formatBRL(pv - pc)}</span></div>
+                  <div style={{ marginLeft: "auto" }}><span className={`badge ${margemForm > 30 ? "badge-green" : margemForm > 10 ? "badge-gold" : "badge-red"}`} style={{ fontSize: 14, padding: "5px 12px" }}>{margemForm.toFixed(1)}% margem</span></div>
                 </div>
               </div>
             )}
-
-            <div className="input-group">
-              <label className="input-label">Quantidade em Estoque</label>
-              <input className="input" type="number" min="0" placeholder="0" value={form.quantidadeEstoque} onChange={e => set("quantidadeEstoque", e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Quantidade Mínima</label>
-              <input className="input" type="number" min="0" placeholder="5" value={form.quantidadeMinima} onChange={e => set("quantidadeMinima", e.target.value)} />
-            </div>
+            <div className="input-group"><label className="input-label">Quantidade em Estoque</label><input className="input" type="number" min="0" placeholder="0" value={form.quantidadeEstoque} onChange={e => set("quantidadeEstoque", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Quantidade Mínima</label><input className="input" type="number" min="0" placeholder="5" value={form.quantidadeMinima} onChange={e => set("quantidadeMinima", e.target.value)} /></div>
           </div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
@@ -1206,7 +1332,6 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
           </div>
         </form>
       </Modal>
-
       <ConfirmDialog open={!!confirmId} title="Remover Produto?" text="Esta ação não pode ser desfeita." danger
         onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Produto removido"); }}
         onCancel={() => setConfirmId(null)} />
@@ -1254,7 +1379,7 @@ function Clientes({ dados, onAdicionar, onRemover }) {
                     <td style={{ color: "var(--text2)" }}>{c.telefone || "—"}</td>
                     <td style={{ color: "var(--text2)" }}>{c.email || "—"}</td>
                     <td style={{ color: "var(--text2)" }}>{formatData(c.dataCriacao)}</td>
-                    <td><button className="btn-icon" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button></td>
+                    <td><button className="btn-icon danger" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -1321,7 +1446,7 @@ function Categorias({ dados, onAdicionar, onRemover }) {
                     <td style={{ fontWeight: 600 }}>{c.nome}</td>
                     <td><span className={`badge ${c.tipo === "receita" ? "badge-green" : "badge-red"}`}>{c.tipo}</span></td>
                     <td><div style={{ width: 20, height: 20, borderRadius: 6, background: c.cor, border: "1px solid var(--border2)" }} /></td>
-                    <td><button className="btn-icon" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button></td>
+                    <td><button className="btn-icon danger" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -1366,6 +1491,7 @@ const NAV_BASE = [
   { id: "estoque", label: "Estoque", icon: "stock", group: "Dados" },
   { id: "clientes", label: "Clientes", icon: "clients", group: "Dados" },
   { id: "categorias", label: "Categorias", icon: "categories", group: "Dados" },
+  { id: "relatorio", label: "Relatório PDF", icon: "pdf", group: "Dados" },
 ];
 const NAV_DONO = [
   { id: "usuarios", label: "Usuários", icon: "clients", group: "Admin" },
@@ -1380,10 +1506,7 @@ function Sidebar({ page, onNavigate, onLogout, open, onClose, perfil, isDono }) 
       <aside className={`sidebar ${open ? "open" : ""}`}>
         <div className="sidebar-logo">
           <div className="logo-img"><img src={logoImg} alt="MG" /></div>
-          <div>
-            <div className="logo-name">FITMGWEAR</div>
-            <div className="logo-sub">Gestão</div>
-          </div>
+          <div><div className="logo-name">FITMGWEAR</div><div className="logo-sub">Gestão</div></div>
         </div>
         <nav className="sidebar-nav">
           {groups.map(g => (
@@ -1391,8 +1514,7 @@ function Sidebar({ page, onNavigate, onLogout, open, onClose, perfil, isDono }) 
               <div className="nav-label">{g}</div>
               {navItems.filter(i => i.group === g).map(item => (
                 <div key={item.id} className={`nav-item ${page === item.id ? "active" : ""}`} onClick={() => { onNavigate(item.id); onClose(); }}>
-                  <Icon name={item.icon} size={16} />
-                  {item.label}
+                  <Icon name={item.icon} size={16} />{item.label}
                 </div>
               ))}
             </div>
@@ -1400,7 +1522,7 @@ function Sidebar({ page, onNavigate, onLogout, open, onClose, perfil, isDono }) 
         </nav>
         <div className="sidebar-footer">
           {perfil && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 6, background: "var(--surface2)", borderRadius: "var(--radius-sm)", margin: "0 0 8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 8, background: "var(--surface2)", borderRadius: "var(--radius-sm)" }}>
               <div style={{ width: 30, height: 30, borderRadius: "50%", background: perfil.cargo === "dono" ? "rgba(232,184,75,0.2)" : "rgba(77,166,255,0.15)", color: perfil.cargo === "dono" ? "var(--accent)" : "var(--blue)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                 {(perfil.nome || "?")[0].toUpperCase()}
               </div>
@@ -1451,15 +1573,13 @@ function useCollection(colName) {
 // MAIN APP
 // ─────────────────────────────────────────────
 export default function App() {
-  const [usuario, setUsuario] = useState(null);       // usuário Firebase Auth
-  const [perfil, setPerfil] = useState(null);         // dados do Firestore (cargo, nome)
+  const [usuario, setUsuario] = useState(null);
+  const [perfil, setPerfil] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState("painel");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const [primeiroAcesso, setPrimeiroAcesso] = useState(false);
 
-  // Escutar estado de autenticação
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUsuario(u);
@@ -1471,7 +1591,6 @@ export default function App() {
         setPrimeiroAcesso(false);
       } else {
         setPerfil(null);
-        // Verificar se existe algum usuário cadastrado
         try {
           const snap = await getDocs(collection(db, "usuarios"));
           setPrimeiroAcesso(snap.empty);
@@ -1493,7 +1612,6 @@ export default function App() {
 
   const loading = loadingT || loadingP || loadingC || loadingCat;
 
-  // Se não há categorias, inicializar
   useEffect(() => {
     if (!loadingCat && categorias.length === 0) {
       CATEGORIAS_PADRAO.forEach(c => setDoc(doc(db, "categorias", c.id), c));
@@ -1507,7 +1625,6 @@ export default function App() {
     setPage("painel");
   }
 
-  // CRUD — Firebase
   async function adicionarTransacao(t) {
     const id = uid();
     const novaT = { ...t, id, data: t.data || new Date().toISOString() };
@@ -1518,7 +1635,7 @@ export default function App() {
       }
     }
     await setDoc(doc(db, "transacoes", id), novaT);
-    toast(t.tipo === "venda" ? "Venda registrada! ✓" : "Despesa registrada");
+    toast(t.tipo === "venda" ? "Venda registrada! ✓" : "Despesa registrada! ✓");
     setPage("transacoes");
   }
 
@@ -1546,18 +1663,13 @@ export default function App() {
     if (prod) await setDoc(doc(db, "produtos", id), { ...prod, ...upd });
   }
 
-  // Aguardar verificação do auth
   if (authLoading) return (
     <>
       <style>{CSS}</style>
-      <div className="loading-screen">
-        <div className="spinner" />
-        <p style={{ color: "var(--text2)", fontSize: 13 }}>Verificando acesso...</p>
-      </div>
+      <div className="loading-screen"><div className="spinner" /><p style={{ color: "var(--text2)", fontSize: 13 }}>Verificando acesso...</p></div>
     </>
   );
 
-  // Não logado → tela de login
   if (!usuario) return (
     <>
       <style>{CSS}</style>
@@ -1566,14 +1678,10 @@ export default function App() {
     </>
   );
 
-  // Logado mas dados carregando
   if (loading) return (
     <>
       <style>{CSS}</style>
-      <div className="loading-screen">
-        <div className="spinner" />
-        <p style={{ color: "var(--text2)", fontSize: 13 }}>Carregando dados...</p>
-      </div>
+      <div className="loading-screen"><div className="spinner" /><p style={{ color: "var(--text2)", fontSize: 13 }}>Carregando dados...</p></div>
     </>
   );
 
@@ -1595,6 +1703,7 @@ export default function App() {
     if (page === "estoque") return <Estoque dados={dados} onAdicionar={adicionarProduto} onRemover={removerProduto} onAtualizar={atualizarProduto} />;
     if (page === "clientes") return <Clientes dados={dados} onAdicionar={adicionarCliente} onRemover={removerCliente} />;
     if (page === "categorias") return <Categorias dados={dados} onAdicionar={adicionarCategoria} onRemover={removerCategoria} />;
+    if (page === "relatorio") return <RelatorioPDF dados={dados} />;
     if (page === "usuarios" && isDono) return <GerenciarUsuarios usuarioAtual={usuario} />;
   }
 
@@ -1603,9 +1712,7 @@ export default function App() {
       <style>{CSS}</style>
       <div className="app">
         <div className="mobile-navbar">
-          <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}>
-            <Icon name="menu" size={18} />
-          </button>
+          <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}><Icon name="menu" size={18} /></button>
           <div className="mobile-logo">
             <div className="mobile-logo-img"><img src={logoImg} alt="Logo" /></div>
             <span className="mobile-logo-name">FITMGWEAR</span>
