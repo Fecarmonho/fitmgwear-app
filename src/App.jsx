@@ -1340,21 +1340,38 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
 }
 
 // ─────────────────────────────────────────────
-// CLIENTES
+// CLIENTES — com edição adicionada
 // ─────────────────────────────────────────────
-function Clientes({ dados, onAdicionar, onRemover }) {
+function Clientes({ dados, onAdicionar, onRemover, onAtualizar }) {
   const [modal, setModal] = useState(false);
+  const [editando, setEditando] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
   const [form, setForm] = useState({ nome: "", telefone: "", email: "" });
   const clientes = dados.clientes || [];
 
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
 
+  function abrirModal(c = null) {
+    if (c) {
+      setEditando(c.id);
+      setForm({ nome: c.nome, telefone: c.telefone || "", email: c.email || "" });
+    } else {
+      setEditando(null);
+      setForm({ nome: "", telefone: "", email: "" });
+    }
+    setModal(true);
+  }
+
   function submit(e) {
     e.preventDefault();
     if (!form.nome.trim()) return toast("Preencha o nome", "error");
-    onAdicionar({ ...form });
-    toast("Cliente adicionado");
+    if (editando) {
+      onAtualizar(editando, { ...form });
+      toast("Cliente atualizado ✓");
+    } else {
+      onAdicionar({ ...form });
+      toast("Cliente adicionado");
+    }
     setForm({ nome: "", telefone: "", email: "" });
     setModal(false);
   }
@@ -1363,7 +1380,7 @@ function Clientes({ dados, onAdicionar, onRemover }) {
     <div>
       <div className="page-header">
         <div><h1 className="page-title">Clientes</h1><p className="page-sub">Gerencie sua base de clientes</p></div>
-        <button className="btn btn-primary" onClick={() => setModal(true)}><Icon name="plus" /> Novo Cliente</button>
+        <button className="btn btn-primary" onClick={() => abrirModal()}><Icon name="plus" /> Novo Cliente</button>
       </div>
       <div className="card">
         <div className="table-wrap">
@@ -1379,7 +1396,12 @@ function Clientes({ dados, onAdicionar, onRemover }) {
                     <td style={{ color: "var(--text2)" }}>{c.telefone || "—"}</td>
                     <td style={{ color: "var(--text2)" }}>{c.email || "—"}</td>
                     <td style={{ color: "var(--text2)" }}>{formatData(c.dataCriacao)}</td>
-                    <td><button className="btn-icon danger" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button></td>
+                    <td>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn-icon" onClick={() => abrirModal(c)}><Icon name="edit" /></button>
+                        <button className="btn-icon danger" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1387,7 +1409,7 @@ function Clientes({ dados, onAdicionar, onRemover }) {
           )}
         </div>
       </div>
-      <Modal open={modal} onClose={() => setModal(false)} title="Novo Cliente">
+      <Modal open={modal} onClose={() => setModal(false)} title={editando ? "Editar Cliente" : "Novo Cliente"}>
         <form onSubmit={submit}>
           <div className="form-grid" style={{ gap: 14 }}>
             <div className="input-group"><label className="input-label">Nome *</label><input className="input" placeholder="Nome completo" value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
@@ -1396,7 +1418,7 @@ function Clientes({ dados, onAdicionar, onRemover }) {
           </div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
-            <button type="submit" className="btn btn-primary">Adicionar</button>
+            <button type="submit" className="btn btn-primary">{editando ? "Salvar Alterações" : "Adicionar"}</button>
           </div>
         </form>
       </Modal>
@@ -1646,6 +1668,10 @@ export default function App() {
     await setDoc(doc(db, "clientes", id), { ...c, id, dataCriacao: new Date().toISOString() });
   }
   async function removerCliente(id) { await deleteDoc(doc(db, "clientes", id)); }
+  async function atualizarCliente(id, upd) {
+    const cliente = clientes.find(c => c.id === id);
+    if (cliente) await setDoc(doc(db, "clientes", id), { ...cliente, ...upd });
+  }
 
   async function adicionarCategoria(c) {
     const id = uid();
@@ -1701,7 +1727,7 @@ export default function App() {
     );
     if (page === "transacoes") return <Transacoes dados={dados} onRemover={removerTransacao} />;
     if (page === "estoque") return <Estoque dados={dados} onAdicionar={adicionarProduto} onRemover={removerProduto} onAtualizar={atualizarProduto} />;
-    if (page === "clientes") return <Clientes dados={dados} onAdicionar={adicionarCliente} onRemover={removerCliente} />;
+    if (page === "clientes") return <Clientes dados={dados} onAdicionar={adicionarCliente} onRemover={removerCliente} onAtualizar={atualizarCliente} />;
     if (page === "categorias") return <Categorias dados={dados} onAdicionar={adicionarCategoria} onRemover={removerCategoria} />;
     if (page === "relatorio") return <RelatorioPDF dados={dados} />;
     if (page === "usuarios" && isDono) return <GerenciarUsuarios usuarioAtual={usuario} />;
