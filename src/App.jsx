@@ -353,6 +353,19 @@ const CSS = `
   .confirm-actions { display:flex; gap:10px; justify-content:flex-end; }
   .product-thumb { width:36px; height:36px; border-radius:8px; background:var(--surface3); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
 
+  /* ── TAGS SELETOR (tamanho/cor) ── */
+  .tags-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .tag-opt {
+    padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border2); background: var(--surface2);
+    color: var(--text2); transition: all 0.15s; user-select: none;
+  }
+  .tag-opt:hover { border-color: var(--accent); color: var(--accent); }
+  .tag-opt.selected { background: rgba(232,184,75,0.15); border-color: var(--accent); color: var(--accent); }
+  .tag-custom-row { display: flex; gap: 8px; margin-top: 6px; }
+  .tag-display { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag-pill { padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background: rgba(232,184,75,0.12); color: var(--accent); border: 1px solid rgba(232,184,75,0.25); }
+
   /* ── LOADING ── */
   .loading-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:var(--bg); }
   .spinner { width:32px; height:32px; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
@@ -1229,7 +1242,12 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
-  const [form, setForm] = useState({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "" });
+  const [form, setForm] = useState({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", tamanhos: [], cores: [] });
+  const [tamanhoCustom, setTamanhoCustom] = useState("");
+  const [corCustom, setCorCustom] = useState("");
+
+  const TAMANHOS_PADRAO = ["PP", "P", "M", "G", "GG", "XGG", "Único"];
+  const CORES_PADRAO = ["Preto", "Branco", "Cinza", "Azul", "Vermelho", "Verde", "Amarelo", "Rosa", "Laranja", "Roxo"];
 
   const produtos = dados.produtos || [];
   const pc = parseFloat(form.precoCompra) || 0;
@@ -1237,18 +1255,43 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
   const margemForm = pc > 0 && pv > 0 ? ((pv - pc) / pc * 100) : null;
 
   function abrirModal(p = null) {
-    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "" }); }
-    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "" }); }
+    if (p) {
+      setEditando(p.id);
+      setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "", tamanhos: p.tamanhos || [], cores: p.cores || [] });
+    } else {
+      setEditando(null);
+      setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", tamanhos: [], cores: [] });
+    }
+    setTamanhoCustom("");
+    setCorCustom("");
     setModal(true);
   }
 
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
 
+  function toggleTag(campo, valor) {
+    setForm(p => {
+      const arr = p[campo] || [];
+      return { ...p, [campo]: arr.includes(valor) ? arr.filter(x => x !== valor) : [...arr, valor] };
+    });
+  }
+
+  function addCustomTag(campo, valor, setValor) {
+    const v = valor.trim();
+    if (!v) return;
+    setForm(p => {
+      const arr = p[campo] || [];
+      if (arr.includes(v)) return p;
+      return { ...p, [campo]: [...arr, v] };
+    });
+    setValor("");
+  }
+
   function submit(e) {
     e.preventDefault();
     if (!form.nome.trim()) return toast("Preencha o nome", "error");
     if (!form.precoVenda || parseFloat(form.precoVenda) <= 0) return toast("Preço de venda inválido", "error");
-    const dados_ = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku };
+    const dados_ = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, tamanhos: form.tamanhos || [], cores: form.cores || [] };
     if (editando) { onAtualizar(editando, dados_); toast("Produto atualizado"); }
     else { onAdicionar(dados_); toast("Produto adicionado"); }
     setModal(false);
@@ -1266,7 +1309,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
             <div className="empty-state"><div className="empty-icon">📦</div><div className="empty-text">Nenhum produto cadastrado</div></div>
           ) : (
             <table>
-              <thead><tr><th>Produto</th><th>SKU</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Margem</th><th></th></tr></thead>
+              <thead><tr><th>Produto</th><th>SKU</th><th>Tamanhos / Cores</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Margem</th><th></th></tr></thead>
               <tbody>
                 {produtos.map(p => {
                   const margem = p.precoCompra > 0 ? ((p.precoVenda - p.precoCompra) / p.precoCompra * 100) : 0;
@@ -1280,6 +1323,17 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
                         </div>
                       </td>
                       <td style={{ color: "var(--text2)", fontSize: 12 }}>{p.sku || "—"}</td>
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {p.tamanhos && p.tamanhos.length > 0 && (
+                            <div className="tag-display">{p.tamanhos.map(t => <span key={t} className="tag-pill">{t}</span>)}</div>
+                          )}
+                          {p.cores && p.cores.length > 0 && (
+                            <div className="tag-display">{p.cores.map(c => <span key={c} className="tag-pill" style={{ background: "rgba(77,166,255,0.12)", color: "var(--blue)", borderColor: "rgba(77,166,255,0.25)" }}>{c}</span>)}</div>
+                          )}
+                          {(!p.tamanhos || p.tamanhos.length === 0) && (!p.cores || p.cores.length === 0) && <span style={{ color: "var(--text2)", fontSize: 12 }}>—</span>}
+                        </div>
+                      </td>
                       <td>{formatBRL(p.precoCompra)}</td>
                       <td style={{ fontWeight: 700 }}>{formatBRL(p.precoVenda)}</td>
                       <td>
@@ -1325,6 +1379,48 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar }) {
             )}
             <div className="input-group"><label className="input-label">Quantidade em Estoque</label><input className="input" type="number" min="0" placeholder="0" value={form.quantidadeEstoque} onChange={e => set("quantidadeEstoque", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">Quantidade Mínima</label><input className="input" type="number" min="0" placeholder="5" value={form.quantidadeMinima} onChange={e => set("quantidadeMinima", e.target.value)} /></div>
+
+            {/* TAMANHOS */}
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+              <label className="input-label">Tamanhos disponíveis</label>
+              <div className="tags-selector">
+                {TAMANHOS_PADRAO.map(t => (
+                  <span key={t} className={`tag-opt ${(form.tamanhos || []).includes(t) ? "selected" : ""}`} onClick={() => toggleTag("tamanhos", t)}>{t}</span>
+                ))}
+              </div>
+              <div className="tag-custom-row" style={{ marginTop: 8 }}>
+                <input className="input" style={{ flex: 1 }} placeholder="Tamanho personalizado (ex: 38, 40...)" value={tamanhoCustom} onChange={e => setTamanhoCustom(e.target.value)} onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addCustomTag("tamanhos", tamanhoCustom, setTamanhoCustom))} />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => addCustomTag("tamanhos", tamanhoCustom, setTamanhoCustom)}>+ Add</button>
+              </div>
+              {form.tamanhos && form.tamanhos.length > 0 && (
+                <div className="tag-display" style={{ marginTop: 6 }}>
+                  {form.tamanhos.map(t => (
+                    <span key={t} className="tag-pill" style={{ cursor: "pointer" }} onClick={() => toggleTag("tamanhos", t)}>{t} ✕</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* CORES */}
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+              <label className="input-label">Cores disponíveis</label>
+              <div className="tags-selector">
+                {CORES_PADRAO.map(c => (
+                  <span key={c} className={`tag-opt ${(form.cores || []).includes(c) ? "selected" : ""}`} style={(form.cores || []).includes(c) ? { background: "rgba(77,166,255,0.15)", borderColor: "var(--blue)", color: "var(--blue)" } : {}} onClick={() => toggleTag("cores", c)}>{c}</span>
+                ))}
+              </div>
+              <div className="tag-custom-row" style={{ marginTop: 8 }}>
+                <input className="input" style={{ flex: 1 }} placeholder="Cor personalizada (ex: Vinho, Nude...)" value={corCustom} onChange={e => setCorCustom(e.target.value)} onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addCustomTag("cores", corCustom, setCorCustom))} />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => addCustomTag("cores", corCustom, setCorCustom)}>+ Add</button>
+              </div>
+              {form.cores && form.cores.length > 0 && (
+                <div className="tag-display" style={{ marginTop: 6 }}>
+                  {form.cores.map(c => (
+                    <span key={c} className="tag-pill" style={{ cursor: "pointer", background: "rgba(77,166,255,0.12)", color: "var(--blue)", borderColor: "rgba(77,166,255,0.25)" }} onClick={() => toggleTag("cores", c)}>{c} ✕</span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
