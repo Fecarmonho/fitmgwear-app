@@ -719,21 +719,23 @@ function GerenciarUsuarios({ usuarioAtual }) {
                       <div className="usuario-email">{u.email}</div>
                     </div>
                   </div>
-                  <div className="usuario-card-bottom">
-                    <span className={`usuario-role ${u.cargo === "dono" ? "role-dono" : "role-func"}`}>
+                  <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span className={`usuario-role ${u.cargo === "dono" ? "role-dono" : "role-func"}`} style={{ alignSelf: "flex-start" }}>
                       {u.cargo === "dono" ? "👑 Dono" : "👤 Funcionário"}
                     </span>
                     {u.uid === usuarioAtual?.uid
-                      ? <span style={{ fontSize: 11, color: "var(--text2)", padding: "4px 8px", borderRadius: 99, background: "var(--surface3)" }}>Você</span>
-                      : <div style={{ display: "flex", gap: 6 }}>
+                      ? <span style={{ fontSize: 11, color: "var(--text2)", padding: "4px 8px", borderRadius: 99, background: "var(--surface3)", alignSelf: "flex-start" }}>Você</span>
+                      : <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button
                             className="btn btn-sm btn-info"
+                            style={{ flex: 1 }}
                             onClick={() => { setModalSenha(u); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" }); setShowSenhas(false); }}
                           >
                             🔑 Alterar Senha
                           </button>
                           <button
                             className="btn btn-sm btn-danger"
+                            style={{ flex: 1 }}
                             onClick={() => setConfirmRemover({ id: u.id, uid: u.uid, nome: u.nome })}
                           >
                             <Icon name="trash" size={13} />Remover
@@ -778,6 +780,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
       <Modal open={!!modalSenha} onClose={() => { setModalSenha(null); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" }); }} title={`Alterar Senha — ${modalSenha?.nome || ""}`}>
         <div className="warn-box" style={{ marginBottom: 16 }}>
           🔑 Informe a senha <strong>atual</strong> do usuário e a nova senha desejada.
+          Não sabe a senha atual? Use o botão <strong>"Enviar E-mail de Redefinição"</strong> abaixo.
         </div>
         <form onSubmit={alterarSenha}>
           <div className="form-grid" style={{ gap: 14 }}>
@@ -807,11 +810,37 @@ function GerenciarUsuarios({ usuarioAtual }) {
                 <span style={{ fontSize: 11, color: "var(--red)" }}>As senhas não conferem</span>}
             </div>
           </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setModalSenha(null)}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={loadingSenha}>
-              {loadingSenha ? "Alterando..." : "Salvar Nova Senha"}
-            </button>
+          <div className="form-actions" style={{ flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", gap: 8, width: "100%", justifyContent: "flex-end" }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setModalSenha(null)}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" disabled={loadingSenha}>
+                {loadingSenha ? "Alterando..." : "Salvar Nova Senha"}
+              </button>
+            </div>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, width: "100%" }}>
+              <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 8 }}>
+                Não sabe a senha atual? Envie um e-mail de redefinição para <strong style={{ color: "var(--text)" }}>{modalSenha?.email}</strong>:
+              </div>
+              <button type="button" className="btn btn-secondary" style={{ width: "100%", fontSize: 12 }}
+                onClick={async () => {
+                  if (!modalSenha) return;
+                  try {
+                    const res = await fetch(
+                      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${auth.app.options.apiKey}`,
+                      { method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ requestType: "PASSWORD_RESET", email: modalSenha.email }) }
+                    );
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error.message);
+                    toast(`E-mail de redefinição enviado para ${modalSenha.email} ✓`, "info");
+                    setModalSenha(null);
+                  } catch (err) {
+                    toast("Erro ao enviar e-mail: " + err.message, "error");
+                  }
+                }}>
+                📧 Enviar E-mail de Redefinição
+              </button>
+            </div>
           </div>
         </form>
       </Modal>
