@@ -32,6 +32,15 @@ function formatData(iso) {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
 
+// ✅ FIX 1: Retorna a data local no formato YYYY-MM-DD sem conversão UTC
+function hojeLocal() {
+  const d = new Date();
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
 // ─────────────────────────────────────────────
 // CSS
 // ─────────────────────────────────────────────
@@ -521,7 +530,7 @@ function LoginScreen({ primeiroAcesso }) {
 }
 
 // ─────────────────────────────────────────────
-// GERENCIAR USUÁRIOS — com correção EMAIL_EXISTS + troca de senha
+// GERENCIAR USUÁRIOS
 // ─────────────────────────────────────────────
 function GerenciarUsuarios({ usuarioAtual }) {
   const [usuarios, setUsuarios] = useState([]);
@@ -530,8 +539,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [confirmRemover, setConfirmRemover] = useState(null);
-  // Modal troca de senha
-  const [modalSenha, setModalSenha] = useState(null); // usuário alvo { id, uid, nome, email }
+  const [modalSenha, setModalSenha] = useState(null);
   const [formSenha, setFormSenha] = useState({ senhaAtual: "", senhaNova: "", confirmar: "" });
   const [loadingSenha, setLoadingSenha] = useState(false);
   const [showSenhas, setShowSenhas] = useState(false);
@@ -547,7 +555,6 @@ function GerenciarUsuarios({ usuarioAtual }) {
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
   function setSenha(k, v) { setFormSenha(p => ({ ...p, [k]: v })); }
 
-  // ── CRIAR USUÁRIO ──
   async function criarUsuario(e) {
     e.preventDefault();
     if (!form.nome.trim() || !form.email.trim() || form.senha.length < 6)
@@ -578,10 +585,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
           const dataSignin = await resSignin.json();
 
           if (dataSignin.error) {
-            toast(
-              `E-mail já registrado com outra senha. Use "Alterar Senha" no usuário existente, ou use um e-mail diferente.`,
-              "error"
-            );
+            toast(`E-mail já registrado com outra senha. Use "Alterar Senha" no usuário existente, ou use um e-mail diferente.`, "error");
             setLoading(false);
             return;
           }
@@ -623,9 +627,6 @@ function GerenciarUsuarios({ usuarioAtual }) {
     }
   }
 
-  // ── ALTERAR SENHA ──
-  // Faz login temporário com a senha atual para obter o idToken,
-  // depois atualiza a senha via API do Firebase.
   async function alterarSenha(e) {
     e.preventDefault();
     if (!formSenha.senhaAtual) return toast("Informe a senha atual.", "error");
@@ -635,7 +636,6 @@ function GerenciarUsuarios({ usuarioAtual }) {
 
     setLoadingSenha(true);
     try {
-      // 1) Faz login com a senha atual para obter o idToken
       const resLogin = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${auth.app.options.apiKey}`,
         {
@@ -655,7 +655,6 @@ function GerenciarUsuarios({ usuarioAtual }) {
         throw new Error(msgs[dataLogin.error.message] || "Senha atual incorreta.");
       }
 
-      // 2) Atualiza a senha usando o idToken obtido
       const resUpdate = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${auth.app.options.apiKey}`,
         {
@@ -678,7 +677,6 @@ function GerenciarUsuarios({ usuarioAtual }) {
     }
   }
 
-  // ── REMOVER USUÁRIO ──
   async function confirmarRemover() {
     if (!confirmRemover) return;
     await deleteDoc(doc(db, "usuarios", confirmRemover.id));
@@ -726,18 +724,12 @@ function GerenciarUsuarios({ usuarioAtual }) {
                     {u.uid === usuarioAtual?.uid
                       ? <span style={{ fontSize: 11, color: "var(--text2)", padding: "4px 8px", borderRadius: 99, background: "var(--surface3)", alignSelf: "flex-start" }}>Você</span>
                       : <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <button
-                            className="btn btn-sm btn-info"
-                            style={{ flex: 1 }}
-                            onClick={() => { setModalSenha(u); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" }); setShowSenhas(false); }}
-                          >
+                          <button className="btn btn-sm btn-info" style={{ flex: 1 }}
+                            onClick={() => { setModalSenha(u); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" }); setShowSenhas(false); }}>
                             🔑 Alterar Senha
                           </button>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            style={{ flex: 1 }}
-                            onClick={() => setConfirmRemover({ id: u.id, uid: u.uid, nome: u.nome })}
-                          >
+                          <button className="btn btn-sm btn-danger" style={{ flex: 1 }}
+                            onClick={() => setConfirmRemover({ id: u.id, uid: u.uid, nome: u.nome })}>
                             <Icon name="trash" size={13} />Remover
                           </button>
                         </div>
@@ -749,7 +741,6 @@ function GerenciarUsuarios({ usuarioAtual }) {
         }
       </div></div>
 
-      {/* Modal criar usuário */}
       <Modal open={modal} onClose={() => { setModal(false); setForm({ nome: "", email: "", senha: "", cargo: "funcionario" }); }} title="Novo Usuário">
         <form onSubmit={criarUsuario}>
           <div className="form-grid" style={{ gap: 14 }}>
@@ -758,9 +749,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
             <div className="input-group">
               <label className="input-label">Senha</label>
               <input className="input" type="password" value={form.senha} onChange={e => set("senha", e.target.value)} placeholder="Mínimo 6 caracteres" />
-              <span style={{ fontSize: 11, color: "var(--text2)", marginTop: 2 }}>
-                Se estiver reativando um usuário removido, use a mesma senha anterior.
-              </span>
+              <span style={{ fontSize: 11, color: "var(--text2)", marginTop: 2 }}>Se estiver reativando um usuário removido, use a mesma senha anterior.</span>
             </div>
             <div className="input-group"><label className="input-label">Cargo</label>
               <select className="input" value={form.cargo} onChange={e => set("cargo", e.target.value)}>
@@ -776,11 +765,9 @@ function GerenciarUsuarios({ usuarioAtual }) {
         </form>
       </Modal>
 
-      {/* Modal alterar senha */}
       <Modal open={!!modalSenha} onClose={() => { setModalSenha(null); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" }); }} title={`Alterar Senha — ${modalSenha?.nome || ""}`}>
         <div className="warn-box" style={{ marginBottom: 16 }}>
           🔑 Informe a senha <strong>atual</strong> do usuário e a nova senha desejada.
-          Não sabe a senha atual? Use o botão <strong>"Enviar E-mail de Redefinição"</strong> abaixo.
         </div>
         <form onSubmit={alterarSenha}>
           <div className="form-grid" style={{ gap: 14 }}>
@@ -788,8 +775,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
               <label className="input-label">Senha Atual</label>
               <div style={{ position: "relative" }}>
                 <input className="input" type={showSenhas ? "text" : "password"} value={formSenha.senhaAtual}
-                  onChange={e => setSenha("senhaAtual", e.target.value)} placeholder="Senha atual do usuário"
-                  style={{ paddingRight: 40 }} />
+                  onChange={e => setSenha("senhaAtual", e.target.value)} placeholder="Senha atual do usuário" style={{ paddingRight: 40 }} />
                 <button type="button" onClick={() => setShowSenhas(s => !s)}
                   style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text2)", cursor: "pointer" }}>
                   <Icon name={showSenhas ? "eyeoff" : "eye"} size={16} />
@@ -813,9 +799,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
           <div className="form-actions" style={{ flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", gap: 8, width: "100%", justifyContent: "flex-end" }}>
               <button type="button" className="btn btn-secondary" onClick={() => setModalSenha(null)}>Cancelar</button>
-              <button type="submit" className="btn btn-primary" disabled={loadingSenha}>
-                {loadingSenha ? "Alterando..." : "Salvar Nova Senha"}
-              </button>
+              <button type="submit" className="btn btn-primary" disabled={loadingSenha}>{loadingSenha ? "Alterando..." : "Salvar Nova Senha"}</button>
             </div>
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, width: "100%" }}>
               <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 8 }}>
@@ -845,7 +829,6 @@ function GerenciarUsuarios({ usuarioAtual }) {
         </form>
       </Modal>
 
-      {/* Confirm remover */}
       <ConfirmDialog
         open={!!confirmRemover}
         title="Remover Usuário?"
@@ -879,6 +862,11 @@ function RelatorioPDF({ dados }) {
   const despesasMes = transacoesFiltradas.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
   const saldoMes = receitasMes - despesasMes;
 
+  // ✅ FIX 2: % lucro sobre despesas do mês
+  const percentLucroDespesa = despesasMes > 0
+    ? ((saldoMes / despesasMes) * 100).toFixed(1)
+    : receitasMes > 0 ? "∞" : "0.0";
+
   const produtosAbaixo = [];
   produtos.forEach(p => {
     const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
@@ -892,6 +880,13 @@ function RelatorioPDF({ dados }) {
   function gerarPDF() {
     const [ano, mesNum] = mes.split("-");
     const nomeMes = new Date(parseInt(ano), parseInt(mesNum) - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
+
+    // Calcula % lucro/despesa para o PDF
+    const pctPDF = despesasMes > 0
+      ? ((saldoMes / despesasMes) * 100).toFixed(1) + "%"
+      : receitasMes > 0 ? "∞" : "0.0%";
+    const pctColor = saldoMes >= 0 ? "#22c55e" : "#ef4444";
+
     const linhas = transacoesFiltradas.map(t => `<tr><td>${formatData(t.data)}</td><td>${t.descricao || "—"}</td><td style="color:${t.tipo === "venda" ? "#22c55e" : "#ef4444"}">${t.tipo === "venda" ? "Venda" : "Despesa"}</td><td style="text-align:right;font-weight:600;color:${t.tipo === "venda" ? "#22c55e" : "#ef4444"}">${formatBRL(t.valor)}</td></tr>`).join("");
     const linhasProd = produtos.map(p => {
       const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
@@ -900,13 +895,15 @@ function RelatorioPDF({ dados }) {
       const varStr = vars.length > 0 ? vars.map(v => `${v.label}: ${v.estoque}`).join(", ") : "—";
       return `<tr><td>${p.nome}</td><td style="text-align:center">${estoqueTotal}</td><td style="font-size:10px;color:#666">${varStr}</td><td>${formatBRL(p.precoVenda)}</td><td style="text-align:center">${margem}%</td></tr>`;
     }).join("");
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FitMGwear</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a1a;padding:32px}h1{font-size:26px;font-weight:900;letter-spacing:3px;color:#e8b84b}h2{font-size:14px;font-weight:700;text-transform:uppercase;margin:24px 0 10px;color:#333;border-bottom:2px solid #e8b84b;padding-bottom:4px}.header{display:flex;justify-content:space-between;margin-bottom:24px;border-bottom:1px solid #ddd;padding-bottom:16px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}.stat{padding:14px;border-radius:8px;border:1px solid #ddd}.stat-label{font-size:10px;text-transform:uppercase;color:#666;margin-bottom:4px}.stat-value{font-size:20px;font-weight:900}.green{color:#22c55e}.red{color:#ef4444}.blue{color:#3b82f6}table{width:100%;border-collapse:collapse;margin-bottom:8px}th{text-align:left;padding:8px;font-size:10px;text-transform:uppercase;background:#f5f5f5;border-bottom:1px solid #ddd;color:#666}td{padding:8px;border-bottom:1px solid #eee;font-size:11px}.footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:12px}</style></head><body>
+
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FitMGwear</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a1a;padding:32px}h1{font-size:26px;font-weight:900;letter-spacing:3px;color:#e8b84b}h2{font-size:14px;font-weight:700;text-transform:uppercase;margin:24px 0 10px;color:#333;border-bottom:2px solid #e8b84b;padding-bottom:4px}.header{display:flex;justify-content:space-between;margin-bottom:24px;border-bottom:1px solid #ddd;padding-bottom:16px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}.stat{padding:14px;border-radius:8px;border:1px solid #ddd}.stat-label{font-size:10px;text-transform:uppercase;color:#666;margin-bottom:4px}.stat-value{font-size:20px;font-weight:900}.green{color:#22c55e}.red{color:#ef4444}.blue{color:#3b82f6}table{width:100%;border-collapse:collapse;margin-bottom:8px}th{text-align:left;padding:8px;font-size:10px;text-transform:uppercase;background:#f5f5f5;border-bottom:1px solid #ddd;color:#666}td{padding:8px;border-bottom:1px solid #eee;font-size:11px}.footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:12px}</style></head><body>
 <div class="header"><div><h1>FITMGWEAR</h1><div style="color:#666;margin-top:2px">Relatório — ${nomeMes}</div></div><div style="text-align:right;font-size:11px;color:#666">Gerado: ${new Date().toLocaleDateString("pt-BR")}</div></div>
-<h2>📊 Resumo do Mês</h2><div class="stats"><div class="stat"><div class="stat-label">Receitas</div><div class="stat-value green">${formatBRL(receitasMes)}</div></div><div class="stat"><div class="stat-label">Despesas</div><div class="stat-value red">${formatBRL(despesasMes)}</div></div><div class="stat"><div class="stat-label">Saldo</div><div class="stat-value ${saldoMes >= 0 ? "blue" : "red"}">${formatBRL(saldoMes)}</div></div></div>
+<h2>📊 Resumo do Mês</h2><div class="stats"><div class="stat"><div class="stat-label">Receitas</div><div class="stat-value green">${formatBRL(receitasMes)}</div></div><div class="stat"><div class="stat-label">Despesas</div><div class="stat-value red">${formatBRL(despesasMes)}</div></div><div class="stat"><div class="stat-label">Saldo</div><div class="stat-value ${saldoMes >= 0 ? "blue" : "red"}">${formatBRL(saldoMes)}</div></div><div class="stat"><div class="stat-label">Lucro / Despesa</div><div class="stat-value" style="color:${pctColor}">${pctPDF}</div><div style="font-size:10px;color:#888;margin-top:4px">saldo ÷ despesas</div></div></div>
 ${produtosAbaixo.length > 0 ? `<div style="background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;padding:10px;font-size:11px;color:#92400e;margin-bottom:16px">⚠️ Estoque crítico: ${produtosAbaixo.map(p => `${p.nome} (${p.estoque} un.)`).join(", ")}</div>` : ""}
 <h2>💳 Transações (${transacoesFiltradas.length})</h2>${transacoesFiltradas.length === 0 ? "<p style='color:#aaa'>Nenhuma transação.</p>" : `<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table>`}
 <h2>📦 Estoque (${produtos.length} produtos)</h2>${produtos.length === 0 ? "<p style='color:#aaa'>Nenhum produto.</p>" : `<table><thead><tr><th>Produto</th><th style="text-align:center">Total</th><th>Variantes</th><th>Venda</th><th style="text-align:center">Margem</th></tr></thead><tbody>${linhasProd}</tbody></table>`}
 <div class="footer">FitMGwear Sistema de Gestão</div></body></html>`;
+
     const win = window.open("", "_blank");
     win.document.write(html);
     win.document.close();
@@ -927,6 +924,13 @@ ${produtosAbaixo.length > 0 ? `<div style="background:#fffbeb;border:1px solid #
               <div style={{ fontSize: 13 }}><span style={{ color: "var(--text2)" }}>Receitas: </span><span style={{ color: "var(--green)", fontWeight: 700 }}>{formatBRL(receitasMes)}</span></div>
               <div style={{ fontSize: 13 }}><span style={{ color: "var(--text2)" }}>Despesas: </span><span style={{ color: "var(--red)", fontWeight: 700 }}>{formatBRL(despesasMes)}</span></div>
               <div style={{ fontSize: 13 }}><span style={{ color: "var(--text2)" }}>Saldo: </span><span style={{ color: saldoMes >= 0 ? "var(--blue)" : "var(--red)", fontWeight: 700 }}>{formatBRL(saldoMes)}</span></div>
+              {/* ✅ FIX 2: % lucro/despesa na prévia da tela também */}
+              <div style={{ fontSize: 13 }}>
+                <span style={{ color: "var(--text2)" }}>Lucro/Despesa: </span>
+                <span style={{ color: saldoMes >= 0 ? "var(--green)" : "var(--red)", fontWeight: 700 }}>
+                  {percentLucroDespesa}{percentLucroDespesa !== "∞" ? "%" : ""}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -957,7 +961,8 @@ ${produtosAbaixo.length > 0 ? `<div style="background:#fffbeb;border:1px solid #
 // ─────────────────────────────────────────────
 function Dashboard({ dados }) {
   const transacoes = dados.transacoes || [];
-  const hojeISO = new Date().toISOString().split("T")[0];
+  // ✅ FIX 1: usa hojeLocal() em vez de toISOString() para comparar datas
+  const hojeISO = hojeLocal();
   const totalReceitas = transacoes.filter(t => t.tipo === "venda").reduce((s, t) => s + t.valor, 0);
   const totalDespesas = transacoes.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
   const saldo = totalReceitas - totalDespesas;
@@ -1020,7 +1025,8 @@ function Dashboard({ dados }) {
 function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
   const [form, setForm] = useState({
     descricao: "", valor: "", categoria: "", cliente: "",
-    data: new Date().toISOString().split("T")[0],
+    // ✅ FIX 1: usa hojeLocal() para a data inicial do formulário
+    data: hojeLocal(),
     observacoes: "", produtoId: "", varianteId: "", quantidade: "1",
   });
   const [tamSel, setTamSel] = useState("");
@@ -1125,7 +1131,7 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
     const payload = {
       tipo, descricao: form.descricao, valor: parseFloat(form.valor),
       categoria: form.categoria || "", cliente: form.cliente || "",
-      data: form.data || new Date().toISOString().split("T")[0],
+      data: form.data || hojeLocal(),
       observacoes: form.observacoes || "", quantidade: qtd,
     };
     if (form.produtoId) payload.produtoId = form.produtoId;
@@ -1814,7 +1820,8 @@ export default function App() {
 
   async function adicionarTransacao(t) {
     const id = uid();
-    const novaT = { ...t, id, data: t.data || new Date().toISOString() };
+    // ✅ FIX 1: usa hojeLocal() como fallback de data, não toISOString()
+    const novaT = { ...t, id, data: t.data || hojeLocal() };
 
     if (t.produtoId && t.tipo === "venda") {
       if (t.varianteId) {
