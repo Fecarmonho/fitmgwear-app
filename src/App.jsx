@@ -29,12 +29,10 @@ function formatBRL(v) {
 
 function formatData(iso) {
   if (!iso) return "";
-  // Força interpretação como data local (sem conversão UTC)
   const partes = iso.slice(0, 10).split("-");
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
-// ✅ FIX 1: Retorna a data local no formato YYYY-MM-DD sem conversão UTC
 function hojeLocal() {
   const d = new Date();
   const ano = d.getFullYear();
@@ -152,6 +150,8 @@ const CSS = `
   .btn-danger:hover { background: rgba(240,96,96,0.2); }
   .btn-info { background: rgba(77,166,255,0.1); color: var(--blue); border: 1px solid rgba(77,166,255,0.2); }
   .btn-info:hover { background: rgba(77,166,255,0.2); }
+  .btn-whatsapp { background: #25d366; color: #fff; border: none; }
+  .btn-whatsapp:hover { background: #20ba57; transform: translateY(-1px); }
   .btn-sm { padding: 6px 13px; font-size: 12px; }
   .btn-icon { padding: 7px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .btn-icon:hover { color: var(--text); background: var(--surface3); }
@@ -189,6 +189,7 @@ const CSS = `
   .badge-yellow { background: rgba(245,166,35,0.12); color: var(--yellow); }
   .badge-blue   { background: rgba(77,166,255,0.12); color: var(--blue); }
   .badge-gold   { background: rgba(232,184,75,0.12); color: var(--accent); }
+  .badge-purple { background: rgba(167,139,250,0.12); color: #a78bfa; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; animation: fadeIn 0.15s; }
   .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.2s cubic-bezier(.34,1.56,.64,1); }
@@ -224,7 +225,6 @@ const CSS = `
   .usuario-info { flex: 1; min-width: 0; }
   .usuario-nome { font-size: 14px; font-weight: 700; color: var(--text); word-break: break-word; }
   .usuario-email { font-size: 12px; color: var(--text2); word-break: break-all; margin-top: 2px; }
-  .usuario-card-bottom { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 10px; gap: 8px; }
   .usuario-role { font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 99px; }
   .role-dono { background: rgba(232,184,75,0.15); color: var(--accent); }
   .role-func { background: rgba(77,166,255,0.12); color: var(--blue); }
@@ -250,9 +250,6 @@ const CSS = `
   .tag-opt { padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); background: var(--surface2); color: var(--text2); transition: all 0.15s; user-select: none; }
   .tag-opt:hover { border-color: var(--accent); color: var(--accent); }
   .tag-opt.selected { background: rgba(232,184,75,0.15); border-color: var(--accent); color: var(--accent); }
-  .tag-custom-row { display: flex; gap: 8px; margin-top: 6px; }
-  .tag-display { display: flex; flex-wrap: wrap; gap: 4px; }
-  .tag-pill { padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; background: rgba(232,184,75,0.12); color: var(--accent); border: 1px solid rgba(232,184,75,0.25); }
 
   .loading-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:var(--bg); }
   .spinner { width:32px; height:32px; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
@@ -277,29 +274,15 @@ const CSS = `
   .variante-grade-section { margin-top: 14px; }
   .variante-grade-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
   .variante-grade-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .variante-chip {
-    padding: 7px 16px; border-radius: 99px; font-size: 13px; font-weight: 700;
-    border: 1.5px solid var(--border2); background: var(--surface2);
-    color: var(--text2); cursor: pointer; transition: all 0.15s; user-select: none;
-    position: relative;
-  }
+  .variante-chip { padding: 7px 16px; border-radius: 99px; font-size: 13px; font-weight: 700; border: 1.5px solid var(--border2); background: var(--surface2); color: var(--text2); cursor: pointer; transition: all 0.15s; user-select: none; position: relative; }
   .variante-chip:hover:not(.disabled) { border-color: var(--accent); color: var(--accent); }
   .variante-chip.active { border-color: var(--accent); background: rgba(232,184,75,0.12); color: var(--accent); }
   .variante-chip.active-cor { border-color: var(--blue); background: rgba(77,166,255,0.12); color: var(--blue); }
   .variante-chip.disabled { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
-  .variante-chip-estoque {
-    position: absolute; top: -6px; right: -4px;
-    font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 99px;
-    background: var(--yellow); color: #000; line-height: 1.4;
-  }
+  .variante-chip-estoque { position: absolute; top: -6px; right: -4px; font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 99px; background: var(--yellow); color: #000; line-height: 1.4; }
   .variante-chip-estoque.zero { background: var(--red); color: #fff; }
-  .variante-resultado {
-    margin-top: 12px; padding: 10px 14px; border-radius: var(--radius-sm);
-    background: rgba(232,184,75,0.07); border: 1px solid rgba(232,184,75,0.25);
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-  }
+  .variante-resultado { margin-top: 12px; padding: 10px 14px; border-radius: var(--radius-sm); background: rgba(232,184,75,0.07); border: 1px solid rgba(232,184,75,0.25); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
   .variante-resultado-nome { font-size: 13px; font-weight: 700; color: var(--accent); }
-  .variante-resultado-estoque { font-size: 12px; color: var(--text2); }
 
   .info-box { background: rgba(77,166,255,0.07); border: 1px solid rgba(77,166,255,0.2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--text2); }
   .warn-box { background: rgba(245,166,35,0.07); border: 1px solid rgba(245,166,35,0.25); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--yellow); }
@@ -313,7 +296,6 @@ const CSS = `
   .compra-card-obs { font-size: 12px; color: var(--text2); margin-top: 6px; font-style: italic; border-left: 2px solid var(--border2); padding-left: 8px; }
   .compra-card-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
   .compras-pendentes-list { display: flex; flex-direction: column; gap: 10px; }
-  .badge-purple { background: rgba(167,139,250,0.12); color: #a78bfa; }
 
   @media (max-width: 1200px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -360,9 +342,9 @@ const Icon = ({ name, size = 16 }) => {
     chevronDown: <path d="M7 10l5 5 5-5z" fill="currentColor"/>,
     chevronRight: <path d="M10 17l5-5-5-5v10z" fill="currentColor"/>,
     variant: <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" fill="currentColor"/>,
-    refresh: <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>,
     cart: <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96C5 16.1 6.9 18 9 18h12v-2H9.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 23.43 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" fill="currentColor"/>,
     inbox: <path d="M19 3H4.99C3.89 3 3 3.9 3 5L3 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.34 3-3 3s-3-1.34-3-3H4.99V5H19v10z" fill="currentColor"/>,
+    handshake: <path d="M11 5L6 9H2v6h4l5 4V5zm7.54 1.46a7 7 0 0 1 0 9.9l-1.41-1.41a5 5 0 0 0 0-7.07l1.41-1.42zM15.71 8.3a3 3 0 0 1 0 4.24l-1.42-1.42a1 1 0 0 0 0-1.41L15.71 8.3z" fill="currentColor"/>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -568,134 +550,73 @@ function GerenciarUsuarios({ usuarioAtual }) {
   }, []);
 
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
-  function setSenha(k, v) { setFormSenha(p => ({ ...p, [k]: v })); }
+  function setSenhaF(k, v) { setFormSenha(p => ({ ...p, [k]: v })); }
 
   async function criarUsuario(e) {
     e.preventDefault();
     if (!form.nome.trim() || !form.email.trim() || form.senha.length < 6)
       return toast("Preencha todos os campos. Senha mínima: 6 caracteres.", "error");
-
     setLoading(true);
     try {
       const resCriar = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${auth.app.options.apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email.trim(), password: form.senha, returnSecureToken: true }),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: form.email.trim(), password: form.senha, returnSecureToken: true }) }
       );
       const dataCriar = await resCriar.json();
-
       if (dataCriar.error) {
         if (dataCriar.error.message === "EMAIL_EXISTS") {
           const resSignin = await fetch(
             `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${auth.app.options.apiKey}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: form.email.trim(), password: form.senha, returnSecureToken: true }),
-            }
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: form.email.trim(), password: form.senha, returnSecureToken: true }) }
           );
           const dataSignin = await resSignin.json();
-
-          if (dataSignin.error) {
-            toast(`E-mail já registrado com outra senha. Use "Alterar Senha" no usuário existente, ou use um e-mail diferente.`, "error");
-            setLoading(false);
-            return;
-          }
-
+          if (dataSignin.error) { toast("E-mail já registrado com outra senha.", "error"); setLoading(false); return; }
           const localId = dataSignin.localId;
           const jaExiste = usuarios.find(u => u.uid === localId);
-          if (jaExiste) {
-            toast(`Este e-mail já está ativo no sistema como "${jaExiste.nome}".`, "error");
-            setLoading(false);
-            return;
-          }
-
-          await setDoc(doc(db, "usuarios", localId), {
-            uid: localId, nome: form.nome.trim(), email: form.email.trim(),
-            cargo: form.cargo, criadoEm: new Date().toISOString(), criadoPor: usuarioAtual?.uid,
-          });
-          toast(`Usuário ${form.nome} reativado com sucesso! ✓`);
-          setForm({ nome: "", email: "", senha: "", cargo: "funcionario" });
-          setModal(false);
-          setLoading(false);
-          return;
+          if (jaExiste) { toast(`Este e-mail já está ativo como "${jaExiste.nome}".`, "error"); setLoading(false); return; }
+          await setDoc(doc(db, "usuarios", localId), { uid: localId, nome: form.nome.trim(), email: form.email.trim(), cargo: form.cargo, criadoEm: new Date().toISOString(), criadoPor: usuarioAtual?.uid });
+          toast(`Usuário ${form.nome} reativado! ✓`);
+          setForm({ nome: "", email: "", senha: "", cargo: "funcionario" }); setModal(false); setLoading(false); return;
         }
-        const msgs = { "WEAK_PASSWORD": "Senha fraca (mínimo 6 caracteres).", "INVALID_EMAIL": "E-mail inválido." };
+        const msgs = { "WEAK_PASSWORD": "Senha fraca.", "INVALID_EMAIL": "E-mail inválido." };
         throw new Error(msgs[dataCriar.error.message] || dataCriar.error.message);
       }
-
-      const localId = dataCriar.localId;
-      await setDoc(doc(db, "usuarios", localId), {
-        uid: localId, nome: form.nome.trim(), email: form.email.trim(),
-        cargo: form.cargo, criadoEm: new Date().toISOString(), criadoPor: usuarioAtual?.uid,
-      });
+      await setDoc(doc(db, "usuarios", dataCriar.localId), { uid: dataCriar.localId, nome: form.nome.trim(), email: form.email.trim(), cargo: form.cargo, criadoEm: new Date().toISOString(), criadoPor: usuarioAtual?.uid });
       toast(`Usuário ${form.nome} criado! ✓`);
-      setForm({ nome: "", email: "", senha: "", cargo: "funcionario" });
-      setModal(false);
-    } catch (err) {
-      toast(err.message || "Erro ao criar usuário.", "error");
-    } finally {
-      setLoading(false);
-    }
+      setForm({ nome: "", email: "", senha: "", cargo: "funcionario" }); setModal(false);
+    } catch (err) { toast(err.message || "Erro ao criar usuário.", "error"); }
+    finally { setLoading(false); }
   }
 
   async function alterarSenha(e) {
     e.preventDefault();
     if (!formSenha.senhaAtual) return toast("Informe a senha atual.", "error");
-    if (formSenha.senhaNova.length < 6) return toast("Nova senha deve ter mínimo 6 caracteres.", "error");
+    if (formSenha.senhaNova.length < 6) return toast("Nova senha mínimo 6 caracteres.", "error");
     if (formSenha.senhaNova !== formSenha.confirmar) return toast("As senhas não conferem.", "error");
-    if (!modalSenha) return;
-
     setLoadingSenha(true);
     try {
       const resLogin = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${auth.app.options.apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: modalSenha.email, password: formSenha.senhaAtual, returnSecureToken: true }),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: modalSenha.email, password: formSenha.senhaAtual, returnSecureToken: true }) }
       );
       const dataLogin = await resLogin.json();
-
-      if (dataLogin.error) {
-        const msgs = {
-          "INVALID_PASSWORD": "Senha atual incorreta.",
-          "INVALID_LOGIN_CREDENTIALS": "Senha atual incorreta.",
-          "TOO_MANY_ATTEMPTS_TRY_LATER": "Muitas tentativas. Tente mais tarde.",
-        };
-        throw new Error(msgs[dataLogin.error.message] || "Senha atual incorreta.");
-      }
-
+      if (dataLogin.error) { const msgs = { "INVALID_PASSWORD": "Senha atual incorreta.", "INVALID_LOGIN_CREDENTIALS": "Senha atual incorreta." }; throw new Error(msgs[dataLogin.error.message] || "Senha atual incorreta."); }
       const resUpdate = await fetch(
         `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${auth.app.options.apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken: dataLogin.idToken, password: formSenha.senhaNova, returnSecureToken: true }),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: dataLogin.idToken, password: formSenha.senhaNova, returnSecureToken: true }) }
       );
       const dataUpdate = await resUpdate.json();
-
-      if (dataUpdate.error) throw new Error("Erro ao atualizar senha: " + dataUpdate.error.message);
-
-      toast(`Senha de "${modalSenha.nome}" alterada com sucesso! ✓`);
-      setModalSenha(null);
-      setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" });
-    } catch (err) {
-      toast(err.message || "Erro ao alterar senha.", "error");
-    } finally {
-      setLoadingSenha(false);
-    }
+      if (dataUpdate.error) throw new Error("Erro ao atualizar senha.");
+      toast(`Senha de "${modalSenha.nome}" alterada! ✓`);
+      setModalSenha(null); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" });
+    } catch (err) { toast(err.message || "Erro ao alterar senha.", "error"); }
+    finally { setLoadingSenha(false); }
   }
 
   async function confirmarRemover() {
     if (!confirmRemover) return;
     await deleteDoc(doc(db, "usuarios", confirmRemover.id));
-    toast(`Usuário "${confirmRemover.nome}" removido do sistema.`);
+    toast(`"${confirmRemover.nome}" removido.`);
     setConfirmRemover(null);
   }
 
@@ -705,13 +626,6 @@ function GerenciarUsuarios({ usuarioAtual }) {
         <div><h1 className="page-title">Usuários</h1><p className="page-sub">Gerencie quem tem acesso ao sistema</p></div>
         <button className="btn btn-primary" onClick={() => setModal(true)}><Icon name="plus" />Novo Usuário</button>
       </div>
-
-      <div className="info-box" style={{ marginBottom: 16 }}>
-        💡 <strong>Dica:</strong> Ao remover um usuário e precisar recadastrá-lo com o mesmo e-mail,
-        use <strong>exatamente a mesma senha</strong> e o sistema reativará o acesso automaticamente.
-        Para trocar a senha, use o botão <strong>🔑 Alterar Senha</strong>.
-      </div>
-
       <div className="card"><div className="card-body">
         {loadingUsers
           ? <div style={{ padding: 40, textAlign: "center", color: "var(--text2)" }}>Carregando...</div>
@@ -721,10 +635,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
               {usuarios.map(u => (
                 <div key={u.id} className="usuario-card">
                   <div className="usuario-card-top">
-                    <div className="usuario-avatar" style={{
-                      background: u.cargo === "dono" ? "rgba(232,184,75,0.15)" : "rgba(77,166,255,0.12)",
-                      color: u.cargo === "dono" ? "var(--accent)" : "var(--blue)"
-                    }}>
+                    <div className="usuario-avatar" style={{ background: u.cargo === "dono" ? "rgba(232,184,75,0.15)" : "rgba(77,166,255,0.12)", color: u.cargo === "dono" ? "var(--accent)" : "var(--blue)" }}>
                       {(u.nome || "?")[0].toUpperCase()}
                     </div>
                     <div className="usuario-info">
@@ -739,15 +650,9 @@ function GerenciarUsuarios({ usuarioAtual }) {
                     {u.uid === usuarioAtual?.uid
                       ? <span style={{ fontSize: 11, color: "var(--text2)", padding: "4px 8px", borderRadius: 99, background: "var(--surface3)", alignSelf: "flex-start" }}>Você</span>
                       : <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <button className="btn btn-sm btn-info" style={{ flex: 1 }}
-                            onClick={() => { setModalSenha(u); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" }); setShowSenhas(false); }}>
-                            🔑 Alterar Senha
-                          </button>
-                          <button className="btn btn-sm btn-danger" style={{ flex: 1 }}
-                            onClick={() => setConfirmRemover({ id: u.id, uid: u.uid, nome: u.nome })}>
-                            <Icon name="trash" size={13} />Remover
-                          </button>
-                        </div>
+                        <button className="btn btn-sm btn-info" style={{ flex: 1 }} onClick={() => { setModalSenha(u); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" }); setShowSenhas(false); }}>🔑 Alterar Senha</button>
+                        <button className="btn btn-sm btn-danger" style={{ flex: 1 }} onClick={() => setConfirmRemover({ id: u.id, uid: u.uid, nome: u.nome })}><Icon name="trash" size={13} />Remover</button>
+                      </div>
                     }
                   </div>
                 </div>
@@ -761,11 +666,7 @@ function GerenciarUsuarios({ usuarioAtual }) {
           <div className="form-grid" style={{ gap: 14 }}>
             <div className="input-group"><label className="input-label">Nome</label><input className="input" value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">E-mail</label><input className="input" type="email" value={form.email} onChange={e => set("email", e.target.value)} /></div>
-            <div className="input-group">
-              <label className="input-label">Senha</label>
-              <input className="input" type="password" value={form.senha} onChange={e => set("senha", e.target.value)} placeholder="Mínimo 6 caracteres" />
-              <span style={{ fontSize: 11, color: "var(--text2)", marginTop: 2 }}>Se estiver reativando um usuário removido, use a mesma senha anterior.</span>
-            </div>
+            <div className="input-group"><label className="input-label">Senha</label><input className="input" type="password" value={form.senha} onChange={e => set("senha", e.target.value)} placeholder="Mínimo 6 caracteres" /></div>
             <div className="input-group"><label className="input-label">Cargo</label>
               <select className="input" value={form.cargo} onChange={e => set("cargo", e.target.value)}>
                 <option value="funcionario">Funcionário</option>
@@ -780,78 +681,27 @@ function GerenciarUsuarios({ usuarioAtual }) {
         </form>
       </Modal>
 
-      <Modal open={!!modalSenha} onClose={() => { setModalSenha(null); setFormSenha({ senhaAtual: "", senhaNova: "", confirmar: "" }); }} title={`Alterar Senha — ${modalSenha?.nome || ""}`}>
-        <div className="warn-box" style={{ marginBottom: 16 }}>
-          🔑 Informe a senha <strong>atual</strong> do usuário e a nova senha desejada.
-        </div>
+      <Modal open={!!modalSenha} onClose={() => setModalSenha(null)} title={`Alterar Senha — ${modalSenha?.nome || ""}`}>
         <form onSubmit={alterarSenha}>
           <div className="form-grid" style={{ gap: 14 }}>
             <div className="input-group">
               <label className="input-label">Senha Atual</label>
               <div style={{ position: "relative" }}>
-                <input className="input" type={showSenhas ? "text" : "password"} value={formSenha.senhaAtual}
-                  onChange={e => setSenha("senhaAtual", e.target.value)} placeholder="Senha atual do usuário" style={{ paddingRight: 40 }} />
-                <button type="button" onClick={() => setShowSenhas(s => !s)}
-                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text2)", cursor: "pointer" }}>
-                  <Icon name={showSenhas ? "eyeoff" : "eye"} size={16} />
-                </button>
+                <input className="input" type={showSenhas ? "text" : "password"} value={formSenha.senhaAtual} onChange={e => setSenhaF("senhaAtual", e.target.value)} style={{ paddingRight: 40 }} />
+                <button type="button" onClick={() => setShowSenhas(s => !s)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text2)", cursor: "pointer" }}><Icon name={showSenhas ? "eyeoff" : "eye"} size={16} /></button>
               </div>
             </div>
-            <div className="input-group">
-              <label className="input-label">Nova Senha</label>
-              <input className="input" type={showSenhas ? "text" : "password"} value={formSenha.senhaNova}
-                onChange={e => setSenha("senhaNova", e.target.value)} placeholder="Mínimo 6 caracteres" />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Confirmar Nova Senha</label>
-              <input className="input" type={showSenhas ? "text" : "password"} value={formSenha.confirmar}
-                onChange={e => setSenha("confirmar", e.target.value)} placeholder="Repita a nova senha"
-                style={formSenha.confirmar && formSenha.confirmar !== formSenha.senhaNova ? { borderColor: "var(--red)" } : {}} />
-              {formSenha.confirmar && formSenha.confirmar !== formSenha.senhaNova &&
-                <span style={{ fontSize: 11, color: "var(--red)" }}>As senhas não conferem</span>}
-            </div>
+            <div className="input-group"><label className="input-label">Nova Senha</label><input className="input" type={showSenhas ? "text" : "password"} value={formSenha.senhaNova} onChange={e => setSenhaF("senhaNova", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Confirmar Nova Senha</label><input className="input" type={showSenhas ? "text" : "password"} value={formSenha.confirmar} onChange={e => setSenhaF("confirmar", e.target.value)} /></div>
           </div>
-          <div className="form-actions" style={{ flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", gap: 8, width: "100%", justifyContent: "flex-end" }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setModalSenha(null)}>Cancelar</button>
-              <button type="submit" className="btn btn-primary" disabled={loadingSenha}>{loadingSenha ? "Alterando..." : "Salvar Nova Senha"}</button>
-            </div>
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, width: "100%" }}>
-              <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 8 }}>
-                Não sabe a senha atual? Envie um e-mail de redefinição para <strong style={{ color: "var(--text)" }}>{modalSenha?.email}</strong>:
-              </div>
-              <button type="button" className="btn btn-secondary" style={{ width: "100%", fontSize: 12 }}
-                onClick={async () => {
-                  if (!modalSenha) return;
-                  try {
-                    const res = await fetch(
-                      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${auth.app.options.apiKey}`,
-                      { method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ requestType: "PASSWORD_RESET", email: modalSenha.email }) }
-                    );
-                    const data = await res.json();
-                    if (data.error) throw new Error(data.error.message);
-                    toast(`E-mail de redefinição enviado para ${modalSenha.email} ✓`, "info");
-                    setModalSenha(null);
-                  } catch (err) {
-                    toast("Erro ao enviar e-mail: " + err.message, "error");
-                  }
-                }}>
-                📧 Enviar E-mail de Redefinição
-              </button>
-            </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setModalSenha(null)}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" disabled={loadingSenha}>{loadingSenha ? "Alterando..." : "Salvar"}</button>
           </div>
         </form>
       </Modal>
 
-      <ConfirmDialog
-        open={!!confirmRemover}
-        title="Remover Usuário?"
-        text={`"${confirmRemover?.nome}" perderá o acesso ao sistema. Para reativar depois, use o mesmo e-mail e senha.`}
-        danger
-        onConfirm={confirmarRemover}
-        onCancel={() => setConfirmRemover(null)}
-      />
+      <ConfirmDialog open={!!confirmRemover} title="Remover Usuário?" text={`"${confirmRemover?.nome}" perderá o acesso.`} danger onConfirm={confirmarRemover} onCancel={() => setConfirmRemover(null)} />
     </div>
   );
 }
@@ -865,10 +715,6 @@ function RelatorioPDF({ dados }) {
   const variantesProduto = dados.variantesProduto || [];
   const compras = dados.compras || [];
 
-  const totalReceitas = transacoes.filter(t => t.tipo === "venda").reduce((s, t) => s + t.valor, 0);
-  const totalDespesas = transacoes.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
-  const saldo = totalReceitas - totalDespesas;
-
   const [mes, setMes] = useState(() => {
     const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
@@ -877,36 +723,24 @@ function RelatorioPDF({ dados }) {
   const receitasMes = transacoesFiltradas.filter(t => t.tipo === "venda").reduce((s, t) => s + t.valor, 0);
   const despesasMes = transacoesFiltradas.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
   const saldoMes = receitasMes - despesasMes;
+  const percentLucroDespesa = despesasMes > 0 ? ((saldoMes / despesasMes) * 100).toFixed(1) : receitasMes > 0 ? "∞" : "0.0";
 
   const comprasMes = useMemo(() => compras.filter(c => c.data && c.data.startsWith(mes)).sort((a, b) => new Date(b.data) - new Date(a.data)), [compras, mes]);
   const totalComprasMes = comprasMes.reduce((s, c) => s + c.valor, 0);
   const comprasPendentesMes = comprasMes.filter(c => c.status === "aguardando").length;
 
-  // ✅ FIX 2: % lucro sobre despesas do mês
-  const percentLucroDespesa = despesasMes > 0
-    ? ((saldoMes / despesasMes) * 100).toFixed(1)
-    : receitasMes > 0 ? "∞" : "0.0";
-
   const produtosAbaixo = [];
   produtos.forEach(p => {
     const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
-    if (vars.length > 0) {
-      vars.forEach(v => { if (v.estoque <= (p.quantidadeMinima || 5)) produtosAbaixo.push({ nome: `${p.nome} (${v.label})`, estoque: v.estoque }); });
-    } else {
-      if (p.quantidadeEstoque <= p.quantidadeMinima) produtosAbaixo.push({ nome: p.nome, estoque: p.quantidadeEstoque });
-    }
+    if (vars.length > 0) { vars.forEach(v => { if (v.estoque <= (p.quantidadeMinima || 5)) produtosAbaixo.push({ nome: `${p.nome} (${v.label})`, estoque: v.estoque }); }); }
+    else { if (p.quantidadeEstoque <= p.quantidadeMinima) produtosAbaixo.push({ nome: p.nome, estoque: p.quantidadeEstoque }); }
   });
 
   function gerarPDF() {
     const [ano, mesNum] = mes.split("-");
     const nomeMes = new Date(parseInt(ano), parseInt(mesNum) - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
-
-    // Calcula % lucro/despesa para o PDF
-    const pctPDF = despesasMes > 0
-      ? ((saldoMes / despesasMes) * 100).toFixed(1) + "%"
-      : receitasMes > 0 ? "∞" : "0.0%";
+    const pctPDF = despesasMes > 0 ? ((saldoMes / despesasMes) * 100).toFixed(1) + "%" : receitasMes > 0 ? "∞" : "0.0%";
     const pctColor = saldoMes >= 0 ? "#22c55e" : "#ef4444";
-
     const linhas = transacoesFiltradas.map(t => `<tr><td>${formatData(t.data)}</td><td>${t.descricao || "—"}</td><td style="color:${t.tipo === "venda" ? "#22c55e" : "#ef4444"}">${t.tipo === "venda" ? "Venda" : "Despesa"}</td><td style="text-align:right;font-weight:600;color:${t.tipo === "venda" ? "#22c55e" : "#ef4444"}">${formatBRL(t.valor)}</td></tr>`).join("");
     const linhasProd = produtos.map(p => {
       const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
@@ -916,16 +750,14 @@ function RelatorioPDF({ dados }) {
       return `<tr><td>${p.nome}</td><td style="text-align:center">${estoqueTotal}</td><td style="font-size:10px;color:#666">${varStr}</td><td>${formatBRL(p.precoVenda)}</td><td style="text-align:center">${margem}%</td></tr>`;
     }).join("");
     const linhasCompras = comprasMes.map(c => `<tr><td>${formatData(c.data)}</td><td>${c.fornecedor}</td><td style="text-align:right;font-weight:600;color:#e8b84b">${formatBRL(c.valor)}</td><td style="color:${c.status === "recebido" ? "#22c55e" : "#f5a623"}">${c.status === "recebido" ? "✓ Recebido" : "⏳ Aguardando"}</td><td style="font-size:10px;color:#666">${c.observacoes || "—"}</td></tr>`).join("");
-
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório FitMGwear</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a1a;padding:32px}h1{font-size:26px;font-weight:900;letter-spacing:3px;color:#e8b84b}h2{font-size:14px;font-weight:700;text-transform:uppercase;margin:24px 0 10px;color:#333;border-bottom:2px solid #e8b84b;padding-bottom:4px}.header{display:flex;justify-content:space-between;margin-bottom:24px;border-bottom:1px solid #ddd;padding-bottom:16px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}.stat{padding:14px;border-radius:8px;border:1px solid #ddd}.stat-label{font-size:10px;text-transform:uppercase;color:#666;margin-bottom:4px}.stat-value{font-size:20px;font-weight:900}.green{color:#22c55e}.red{color:#ef4444}.blue{color:#3b82f6}table{width:100%;border-collapse:collapse;margin-bottom:8px}th{text-align:left;padding:8px;font-size:10px;text-transform:uppercase;background:#f5f5f5;border-bottom:1px solid #ddd;color:#666}td{padding:8px;border-bottom:1px solid #eee;font-size:11px}.footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:12px}</style></head><body>
 <div class="header"><div><h1>FITMGWEAR</h1><div style="color:#666;margin-top:2px">Relatório — ${nomeMes}</div></div><div style="text-align:right;font-size:11px;color:#666">Gerado: ${new Date().toLocaleDateString("pt-BR")}</div></div>
-<h2>📊 Resumo do Mês</h2><div class="stats"><div class="stat"><div class="stat-label">Receitas</div><div class="stat-value green">${formatBRL(receitasMes)}</div></div><div class="stat"><div class="stat-label">Despesas</div><div class="stat-value red">${formatBRL(despesasMes)}</div></div><div class="stat"><div class="stat-label">Saldo</div><div class="stat-value ${saldoMes >= 0 ? "blue" : "red"}">${formatBRL(saldoMes)}</div></div><div class="stat"><div class="stat-label">Lucro / Despesa</div><div class="stat-value" style="color:${pctColor}">${pctPDF}</div><div style="font-size:10px;color:#888;margin-top:4px">saldo ÷ despesas</div></div></div>
+<h2>📊 Resumo do Mês</h2><div class="stats"><div class="stat"><div class="stat-label">Receitas</div><div class="stat-value green">${formatBRL(receitasMes)}</div></div><div class="stat"><div class="stat-label">Despesas</div><div class="stat-value red">${formatBRL(despesasMes)}</div></div><div class="stat"><div class="stat-label">Saldo</div><div class="stat-value ${saldoMes >= 0 ? "blue" : "red"}">${formatBRL(saldoMes)}</div></div><div class="stat"><div class="stat-label">Lucro/Despesa</div><div class="stat-value" style="color:${pctColor}">${pctPDF}</div></div></div>
 ${produtosAbaixo.length > 0 ? `<div style="background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;padding:10px;font-size:11px;color:#92400e;margin-bottom:16px">⚠️ Estoque crítico: ${produtosAbaixo.map(p => `${p.nome} (${p.estoque} un.)`).join(", ")}</div>` : ""}
 <h2>💳 Transações (${transacoesFiltradas.length})</h2>${transacoesFiltradas.length === 0 ? "<p style='color:#aaa'>Nenhuma transação.</p>" : `<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table>`}
-<h2>🛒 Compras de Mercadoria (${comprasMes.length}) — Total: ${formatBRL(totalComprasMes)}</h2>${comprasMes.length === 0 ? "<p style='color:#aaa'>Nenhuma compra neste mês.</p>" : `<table><thead><tr><th>Data</th><th>Fornecedor</th><th style="text-align:right">Valor</th><th>Status</th><th>Observações</th></tr></thead><tbody>${linhasCompras}</tbody></table>`}
-<h2>📦 Estoque (${produtos.length} produtos)</h2>${produtos.length === 0 ? "<p style='color:#aaa'>Nenhum produto.</p>" : `<table><thead><tr><th>Produto</th><th style="text-align:center">Total</th><th>Variantes</th><th>Venda</th><th style="text-align:center">Margem</th></tr></thead><tbody>${linhasProd}</tbody></table>`}
+<h2>🛒 Compras (${comprasMes.length}) — Total: ${formatBRL(totalComprasMes)}</h2>${comprasMes.length === 0 ? "<p style='color:#aaa'>Nenhuma compra.</p>" : `<table><thead><tr><th>Data</th><th>Fornecedor</th><th style="text-align:right">Valor</th><th>Status</th><th>Obs.</th></tr></thead><tbody>${linhasCompras}</tbody></table>`}
+<h2>📦 Estoque (${produtos.length})</h2>${produtos.length === 0 ? "<p style='color:#aaa'>Nenhum produto.</p>" : `<table><thead><tr><th>Produto</th><th style="text-align:center">Total</th><th>Variantes</th><th>Venda</th><th style="text-align:center">Margem</th></tr></thead><tbody>${linhasProd}</tbody></table>`}
 <div class="footer">FitMGwear Sistema de Gestão</div></body></html>`;
-
     const win = window.open("", "_blank");
     win.document.write(html);
     win.document.close();
@@ -946,20 +778,8 @@ ${produtosAbaixo.length > 0 ? `<div style="background:#fffbeb;border:1px solid #
               <div style={{ fontSize: 13 }}><span style={{ color: "var(--text2)" }}>Receitas: </span><span style={{ color: "var(--green)", fontWeight: 700 }}>{formatBRL(receitasMes)}</span></div>
               <div style={{ fontSize: 13 }}><span style={{ color: "var(--text2)" }}>Despesas: </span><span style={{ color: "var(--red)", fontWeight: 700 }}>{formatBRL(despesasMes)}</span></div>
               <div style={{ fontSize: 13 }}><span style={{ color: "var(--text2)" }}>Saldo: </span><span style={{ color: saldoMes >= 0 ? "var(--blue)" : "var(--red)", fontWeight: 700 }}>{formatBRL(saldoMes)}</span></div>
-              {/* ✅ FIX 2: % lucro/despesa na prévia da tela também */}
-              <div style={{ fontSize: 13 }}>
-                <span style={{ color: "var(--text2)" }}>Lucro/Despesa: </span>
-                <span style={{ color: saldoMes >= 0 ? "var(--green)" : "var(--red)", fontWeight: 700 }}>
-                  {percentLucroDespesa}{percentLucroDespesa !== "∞" ? "%" : ""}
-                </span>
-              </div>
-              {comprasMes.length > 0 && (
-                <div style={{ fontSize: 13 }}>
-                  <span style={{ color: "var(--text2)" }}>Compras: </span>
-                  <span style={{ color: "#a78bfa", fontWeight: 700 }}>{formatBRL(totalComprasMes)}</span>
-                  {comprasPendentesMes > 0 && <span style={{ color: "var(--yellow)", fontSize: 11, marginLeft: 6 }}>({comprasPendentesMes} aguardando)</span>}
-                </div>
-              )}
+              <div style={{ fontSize: 13 }}><span style={{ color: "var(--text2)" }}>Lucro/Despesa: </span><span style={{ color: saldoMes >= 0 ? "var(--green)" : "var(--red)", fontWeight: 700 }}>{percentLucroDespesa}{percentLucroDespesa !== "∞" ? "%" : ""}</span></div>
+              {comprasMes.length > 0 && <div style={{ fontSize: 13 }}><span style={{ color: "var(--text2)" }}>Compras: </span><span style={{ color: "#a78bfa", fontWeight: 700 }}>{formatBRL(totalComprasMes)}</span>{comprasPendentesMes > 0 && <span style={{ color: "var(--yellow)", fontSize: 11, marginLeft: 6 }}>({comprasPendentesMes} aguardando)</span>}</div>}
             </div>
           </div>
         </div>
@@ -991,8 +811,10 @@ ${produtosAbaixo.length > 0 ? `<div style="background:#fffbeb;border:1px solid #
 function Dashboard({ dados }) {
   const transacoes = dados.transacoes || [];
   const compras = dados.compras || [];
-  // ✅ FIX 1: usa hojeLocal() em vez de toISOString() para comparar datas
+  const encomendas = dados.encomendas || [];
+  const fiados = dados.fiados || [];
   const hojeISO = hojeLocal();
+
   const totalReceitas = transacoes.filter(t => t.tipo === "venda").reduce((s, t) => s + t.valor, 0);
   const totalDespesas = transacoes.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
   const saldo = totalReceitas - totalDespesas;
@@ -1001,14 +823,17 @@ function Dashboard({ dados }) {
   const comprasPendentes = compras.filter(c => c.status === "aguardando");
   const totalPendente = comprasPendentes.reduce((s, c) => s + c.valor, 0);
 
+  const encomendasAtivas = encomendas.filter(e => e.status !== "entregue");
+  const encomendasAtrasadas = encomendasAtivas.filter(e => e.dataEntrega && e.dataEntrega < hojeISO);
+
+  const fiadosPendentes = fiados.filter(f => f.status === "pendente");
+  const totalFiado = fiadosPendentes.reduce((s, f) => s + f.valor, 0);
+
   const produtosAbaixo = [];
   (dados.produtos || []).forEach(p => {
     const vars = (dados.variantesProduto || []).filter(v => v.produtoPaiId === p.id);
-    if (vars.length > 0) {
-      vars.forEach(v => { if (v.estoque <= (p.quantidadeMinima || 5)) produtosAbaixo.push(`${p.nome} (${v.label})`); });
-    } else {
-      if (p.quantidadeEstoque <= p.quantidadeMinima) produtosAbaixo.push(p.nome);
-    }
+    if (vars.length > 0) { vars.forEach(v => { if (v.estoque <= (p.quantidadeMinima || 5)) produtosAbaixo.push(`${p.nome} (${v.label})`); }); }
+    else { if (p.quantidadeEstoque <= p.quantidadeMinima) produtosAbaixo.push(p.nome); }
   });
 
   const ultimas = [...transacoes].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 8);
@@ -1022,28 +847,53 @@ function Dashboard({ dados }) {
         <div className={`stat-card ${saldo >= 0 ? "blue" : "red"}`}><div className="stat-label">Saldo Líquido</div><div className="stat-value">{formatBRL(saldo)}</div></div>
         <div className="stat-card gold"><div className="stat-label">Hoje</div><div className="stat-value">{hojeCount}</div><div className="stat-sub">Transações</div></div>
       </div>
+
       {produtosAbaixo.length > 0 && (
-        <div className="card" style={{ marginBottom: 20, borderColor: "rgba(245,166,35,0.3)", background: "rgba(245,166,35,0.04)" }}>
+        <div className="card" style={{ marginBottom: 16, borderColor: "rgba(245,166,35,0.3)", background: "rgba(245,166,35,0.04)" }}>
           <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ fontSize: 24 }}>⚠️</div>
-            <div><div style={{ fontWeight: 700, fontSize: 14, color: "var(--yellow)" }}>Estoque crítico</div>
-              <div style={{ fontSize: 13, color: "var(--text2)" }}>{produtosAbaixo.join(", ")}</div></div>
+            <div><div style={{ fontWeight: 700, fontSize: 14, color: "var(--yellow)" }}>Estoque crítico</div><div style={{ fontSize: 13, color: "var(--text2)" }}>{produtosAbaixo.join(", ")}</div></div>
           </div>
         </div>
       )}
+
       {comprasPendentes.length > 0 && (
-        <div className="card" style={{ marginBottom: 20, borderColor: "rgba(167,139,250,0.3)", background: "rgba(167,139,250,0.04)" }}>
-          <div className="card-body" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ fontSize: 24 }}>🛒</div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#a78bfa" }}>{comprasPendentes.length} compra{comprasPendentes.length > 1 ? "s" : ""} aguardando recebimento</div>
-                <div style={{ fontSize: 13, color: "var(--text2)" }}>Investimento pendente: <strong style={{ color: "var(--accent)" }}>{formatBRL(totalPendente)}</strong></div>
+        <div className="card" style={{ marginBottom: 16, borderColor: "rgba(167,139,250,0.3)", background: "rgba(167,139,250,0.04)" }}>
+          <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 24 }}>🛒</div>
+            <div><div style={{ fontWeight: 700, fontSize: 14, color: "#a78bfa" }}>{comprasPendentes.length} compra{comprasPendentes.length > 1 ? "s" : ""} aguardando recebimento</div>
+              <div style={{ fontSize: 13, color: "var(--text2)" }}>Pendente: <strong style={{ color: "var(--accent)" }}>{formatBRL(totalPendente)}</strong></div></div>
+          </div>
+        </div>
+      )}
+
+      {encomendasAtivas.length > 0 && (
+        <div className="card" style={{ marginBottom: 16, borderColor: encomendasAtrasadas.length > 0 ? "rgba(240,96,96,0.3)" : "rgba(77,166,255,0.3)", background: encomendasAtrasadas.length > 0 ? "rgba(240,96,96,0.04)" : "rgba(77,166,255,0.04)" }}>
+          <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 24 }}>📦</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: encomendasAtrasadas.length > 0 ? "var(--red)" : "var(--blue)" }}>
+                {encomendasAtivas.length} encomenda{encomendasAtivas.length > 1 ? "s" : ""} ativa{encomendasAtivas.length > 1 ? "s" : ""}
+                {encomendasAtrasadas.length > 0 && ` — ${encomendasAtrasadas.length} atrasada${encomendasAtrasadas.length > 1 ? "s" : ""}!`}
               </div>
+              <div style={{ fontSize: 13, color: "var(--text2)" }}>{encomendasAtivas.map(e => e.cliente).join(", ")}</div>
             </div>
           </div>
         </div>
       )}
+
+      {fiadosPendentes.length > 0 && (
+        <div className="card" style={{ marginBottom: 16, borderColor: "rgba(240,96,96,0.3)", background: "rgba(240,96,96,0.04)" }}>
+          <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 24 }}>🤝</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "var(--red)" }}>{fiadosPendentes.length} fiado{fiadosPendentes.length > 1 ? "s" : ""} em aberto</div>
+              <div style={{ fontSize: 13, color: "var(--text2)" }}>Total a receber: <strong style={{ color: "var(--accent)" }}>{formatBRL(totalFiado)}</strong></div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <div className="card-header" style={{ padding: "20px 20px 14px" }}><span className="card-title">Últimas Transações</span></div>
         <div className="table-wrap">
@@ -1069,19 +919,13 @@ function Dashboard({ dados }) {
 // FORM TRANSAÇÃO
 // ─────────────────────────────────────────────
 function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
-  const [form, setForm] = useState({
-    descricao: "", valor: "", categoria: "", cliente: "",
-    // ✅ FIX 1: usa hojeLocal() para a data inicial do formulário
-    data: hojeLocal(),
-    observacoes: "", produtoId: "", varianteId: "", quantidade: "1",
-  });
+  const [form, setForm] = useState({ descricao: "", valor: "", categoria: "", cliente: "", data: hojeLocal(), observacoes: "", produtoId: "", varianteId: "", quantidade: "1" });
   const [tamSel, setTamSel] = useState("");
   const [corSel, setCorSel] = useState("");
 
   const categorias = (dados.categorias || []).filter(c => tipo === "venda" ? c.tipo === "receita" : c.tipo === "despesa");
   const produtos = dados.produtos || [];
   const variantesProduto = dados.variantesProduto || [];
-
   const produtoSelecionado = produtos.find(p => p.id === form.produtoId);
 
   const variantesDisponiveis = useMemo(() => {
@@ -1098,14 +942,12 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
     variantesDisponiveis.forEach(v => {
       const partes = v.label.split("/").map(s => s.trim());
       if (partes.length >= 2) {
-        const [tam, ...corParts] = partes;
-        const cor = corParts.join("/");
+        const [tam, ...corParts] = partes; const cor = corParts.join("/");
         tamSet.add(tam);
         if (!coresMap[tam]) coresMap[tam] = [];
         if (!coresMap[tam].find(c => c.cor === cor)) coresMap[tam].push({ cor, variante: v });
       } else {
-        tamSet.add(v.label);
-        coresMap[v.label] = [{ cor: "", variante: v }];
+        tamSet.add(v.label); coresMap[v.label] = [{ cor: "", variante: v }];
       }
     });
     return { tamanhos: [...tamSet], coresParaTam: coresMap };
@@ -1121,20 +963,11 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
 
   useEffect(() => {
     if (varianteSelecionada) {
-      setForm(p => ({
-        ...p, varianteId: varianteSelecionada.id,
-        descricao: produtoSelecionado ? `${produtoSelecionado.nome} — ${varianteSelecionada.label}` : varianteSelecionada.label,
-        valor: produtoSelecionado ? (produtoSelecionado.precoVenda * (parseInt(p.quantidade) || 1)).toFixed(2) : p.valor
-      }));
-    } else {
-      setForm(p => ({ ...p, varianteId: "" }));
-    }
+      setForm(p => ({ ...p, varianteId: varianteSelecionada.id, descricao: produtoSelecionado ? `${produtoSelecionado.nome} — ${varianteSelecionada.label}` : varianteSelecionada.label, valor: produtoSelecionado ? (produtoSelecionado.precoVenda * (parseInt(p.quantidade) || 1)).toFixed(2) : p.valor }));
+    } else { setForm(p => ({ ...p, varianteId: "" })); }
   }, [varianteSelecionada]);
 
-  const estoqueDisponivel = varianteSelecionada
-    ? varianteSelecionada.estoque
-    : (!temVariantes && produtoSelecionado ? produtoSelecionado.quantidadeEstoque : 0);
-
+  const estoqueDisponivel = varianteSelecionada ? varianteSelecionada.estoque : (!temVariantes && produtoSelecionado ? produtoSelecionado.quantidadeEstoque : 0);
   const valorVenda = parseFloat(form.valor) || 0;
   const custoUnitario = produtoSelecionado ? produtoSelecionado.precoCompra : 0;
   const qtd = parseInt(form.quantidade) || 1;
@@ -1147,23 +980,13 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
   function handleProduto(id) {
     setForm(p => ({ ...p, produtoId: id, varianteId: "", descricao: "", valor: "" }));
     setTamSel(""); setCorSel("");
-    if (id) {
-      const p = produtos.find(x => x.id === id);
-      if (p) setForm(prev => ({ ...prev, produtoId: id, descricao: p.nome, valor: p.precoVenda.toFixed(2) }));
-    }
-  }
-
-  function handleTam(tam) {
-    setTamSel(tam); setCorSel("");
+    if (id) { const p = produtos.find(x => x.id === id); if (p) setForm(prev => ({ ...prev, produtoId: id, descricao: p.nome, valor: p.precoVenda.toFixed(2) })); }
   }
 
   function handleQtd(q) {
     set("quantidade", q);
     const n = parseInt(q) || 1;
-    if (produtoSelecionado) {
-      set("valor", (produtoSelecionado.precoVenda * n).toFixed(2));
-      if (n > estoqueDisponivel) toast(`⚠️ Disponível: ${estoqueDisponivel} un.`, "error");
-    }
+    if (produtoSelecionado) { set("valor", (produtoSelecionado.precoVenda * n).toFixed(2)); if (n > estoqueDisponivel) toast(`⚠️ Disponível: ${estoqueDisponivel} un.`, "error"); }
   }
 
   function submit(e) {
@@ -1171,15 +994,10 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
     if (!form.descricao.trim()) return toast("Preencha a descrição", "error");
     if (!form.valor || parseFloat(form.valor) <= 0) return toast("Valor inválido", "error");
     if (tipo === "venda" && form.produtoId) {
-      if (temVariantes && !form.varianteId) return toast("Selecione uma variante para registrar a venda", "error");
+      if (temVariantes && !form.varianteId) return toast("Selecione uma variante", "error");
       if (qtd > estoqueDisponivel) return toast("Estoque insuficiente!", "error");
     }
-    const payload = {
-      tipo, descricao: form.descricao, valor: parseFloat(form.valor),
-      categoria: form.categoria || "", cliente: form.cliente || "",
-      data: form.data || hojeLocal(),
-      observacoes: form.observacoes || "", quantidade: qtd,
-    };
+    const payload = { tipo, descricao: form.descricao, valor: parseFloat(form.valor), categoria: form.categoria || "", cliente: form.cliente || "", data: form.data || hojeLocal(), observacoes: form.observacoes || "", quantidade: qtd };
     if (form.produtoId) payload.produtoId = form.produtoId;
     if (form.varianteId) payload.varianteId = form.varianteId;
     onSalvar(payload);
@@ -1210,13 +1028,10 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
                 </select>
               </div>
               <div className="input-group">
-                <label className="input-label">Quantidade <span style={{ color: "var(--text2)", fontWeight: 400 }}>(máx: {estoqueDisponivel})</span></label>
-                <input className="input" type="number" min="1" max={estoqueDisponivel || undefined} value={form.quantidade}
-                  onChange={e => handleQtd(e.target.value)}
-                  style={qtd > estoqueDisponivel ? { borderColor: "var(--red)" } : {}} />
+                <label className="input-label">Quantidade (máx: {estoqueDisponivel})</label>
+                <input className="input" type="number" min="1" max={estoqueDisponivel || undefined} value={form.quantidade} onChange={e => handleQtd(e.target.value)} style={qtd > estoqueDisponivel ? { borderColor: "var(--red)" } : {}} />
               </div>
             </div>
-
             {form.produtoId && temVariantes && (
               <div className="variante-grade-section">
                 <div className="variante-grade-label">Tamanho</div>
@@ -1226,9 +1041,7 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
                     const temEstoque = opcoes.some(o => o.variante.estoque > 0);
                     const estoqueTotal = opcoes.reduce((s, o) => s + (o.variante.estoque || 0), 0);
                     return (
-                      <div key={tam}
-                        className={`variante-chip ${tamSel === tam ? "active" : ""} ${!temEstoque ? "disabled" : ""}`}
-                        onClick={() => temEstoque && handleTam(tam)}>
+                      <div key={tam} className={`variante-chip ${tamSel === tam ? "active" : ""} ${!temEstoque ? "disabled" : ""}`} onClick={() => temEstoque && setTamSel(tam)}>
                         {tam}
                         {estoqueTotal <= 5 && estoqueTotal > 0 && <span className="variante-chip-estoque">{estoqueTotal}</span>}
                         {estoqueTotal === 0 && <span className="variante-chip-estoque zero">0</span>}
@@ -1236,15 +1049,12 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
                     );
                   })}
                 </div>
-
                 {tamSel && coresParaTam[tamSel] && coresParaTam[tamSel][0]?.cor !== "" && (
                   <div style={{ marginTop: 12 }}>
                     <div className="variante-grade-label">Cor</div>
                     <div className="variante-grade-chips">
                       {(coresParaTam[tamSel] || []).map(({ cor, variante: v }) => (
-                        <div key={cor}
-                          className={`variante-chip ${corSel === cor ? "active-cor" : ""} ${v.estoque === 0 ? "disabled" : ""}`}
-                          onClick={() => v.estoque > 0 && setCorSel(cor)}>
+                        <div key={cor} className={`variante-chip ${corSel === cor ? "active-cor" : ""} ${v.estoque === 0 ? "disabled" : ""}`} onClick={() => v.estoque > 0 && setCorSel(cor)}>
                           {cor}
                           {v.estoque <= 5 && v.estoque > 0 && <span className="variante-chip-estoque">{v.estoque}</span>}
                           {v.estoque === 0 && <span className="variante-chip-estoque zero">0</span>}
@@ -1253,18 +1063,14 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
                     </div>
                   </div>
                 )}
-
                 {varianteSelecionada && (
                   <div className="variante-resultado">
                     <span className="variante-resultado-nome">✓ {varianteSelecionada.label}</span>
-                    <span className={`badge ${varianteSelecionada.estoque <= 5 ? "badge-yellow" : "badge-green"}`}>
-                      {varianteSelecionada.estoque} un. em estoque
-                    </span>
+                    <span className={`badge ${varianteSelecionada.estoque <= 5 ? "badge-yellow" : "badge-green"}`}>{varianteSelecionada.estoque} un. em estoque</span>
                   </div>
                 )}
               </div>
             )}
-
             {produtoSelecionado && valorVenda > 0 && (
               <div className="margem-preview" style={{ marginTop: 14 }}>
                 <div className="margem-item"><span className="margem-item-label">Custo Total</span><span className="margem-item-value" style={{ color: "var(--red)" }}>{formatBRL(custoTotal)}</span></div>
@@ -1298,10 +1104,7 @@ function FormTransacao({ tipo, dados, onSalvar, onCancelar }) {
           </div>
         )}
         <div className="input-group"><label className="input-label">Data</label><input className="input" type="date" value={form.data} onChange={e => set("data", e.target.value)} /></div>
-        <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-          <label className="input-label">Observações</label>
-          <textarea className="input" value={form.observacoes} onChange={e => set("observacoes", e.target.value)} style={{ minHeight: 60 }} />
-        </div>
+        <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Observações</label><textarea className="input" value={form.observacoes} onChange={e => set("observacoes", e.target.value)} style={{ minHeight: 60 }} /></div>
       </div>
       <div className="form-actions">
         {onCancelar && <button type="button" className="btn btn-secondary" onClick={onCancelar}>Cancelar</button>}
@@ -1368,7 +1171,7 @@ function Transacoes({ dados, onRemover }) {
 }
 
 // ─────────────────────────────────────────────
-// ESTOQUE com VARIANTES
+// ESTOQUE
 // ─────────────────────────────────────────────
 function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVariante, onRemoverVariante, onAtualizarVariante }) {
   const [modal, setModal] = useState(false);
@@ -1377,30 +1180,22 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   const [confirmId, setConfirmId] = useState(null);
   const [expandidos, setExpandidos] = useState({});
   const [form, setForm] = useState({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "" });
-
   const [novaVariante, setNovaVariante] = useState({ label: "", estoque: "" });
   const [editandoVariante, setEditandoVariante] = useState(null);
 
   const produtos = dados.produtos || [];
   const variantesProduto = dados.variantesProduto || [];
-
   const pc = parseFloat(form.precoCompra) || 0;
   const pv = parseFloat(form.precoVenda) || 0;
   const margemForm = pc > 0 && pv > 0 ? ((pv - pc) / pc * 100) : null;
 
   function abrirModal(p = null) {
-    if (p) {
-      setEditando(p.id);
-      setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "" });
-    } else {
-      setEditando(null);
-      setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "" });
-    }
+    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "" }); }
+    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "" }); }
     setModal(true);
   }
 
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
-
   function toggleExpand(id) { setExpandidos(p => ({ ...p, [id]: !p[id] })); }
 
   function submit(e) {
@@ -1415,33 +1210,29 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
 
   async function salvarVariante(e) {
     e.preventDefault();
-    if (!novaVariante.label.trim()) return toast("Informe o label da variante (ex: P/Preto)", "error");
-    if (!modalVariantes) return;
+    if (!novaVariante.label.trim()) return toast("Informe o label da variante", "error");
     await onAdicionarVariante({ produtoPaiId: modalVariantes.id, label: novaVariante.label.trim(), estoque: parseInt(novaVariante.estoque) || 0 });
-    setNovaVariante({ label: "", estoque: "" });
-    toast("Variante adicionada ✓");
+    setNovaVariante({ label: "", estoque: "" }); toast("Variante adicionada ✓");
   }
 
   async function salvarEdicaoVariante(e) {
     e.preventDefault();
     if (!editandoVariante) return;
     await onAtualizarVariante(editandoVariante.id, { label: editandoVariante.label, estoque: parseInt(editandoVariante.estoque) || 0 });
-    setEditandoVariante(null);
-    toast("Variante atualizada ✓");
+    setEditandoVariante(null); toast("Variante atualizada ✓");
   }
 
   return (
     <div>
       <div className="page-header">
-        <div><h1 className="page-title">Estoque</h1><p className="page-sub">Gerencie produtos e variantes (tamanho/cor)</p></div>
+        <div><h1 className="page-title">Estoque</h1><p className="page-sub">Gerencie produtos e variantes</p></div>
         <button className="btn btn-primary" onClick={() => abrirModal()}><Icon name="plus" /> Novo Produto</button>
       </div>
       <div className="card">
         <div className="table-wrap">
-          {produtos.length === 0 ? (
-            <div className="empty-state"><div className="empty-icon">📦</div><div className="empty-text">Nenhum produto cadastrado</div></div>
-          ) : (
-            <table>
+          {produtos.length === 0
+            ? <div className="empty-state"><div className="empty-icon">📦</div><div className="empty-text">Nenhum produto cadastrado</div></div>
+            : <table>
               <thead><tr><th>Produto</th><th>SKU</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Margem</th><th></th></tr></thead>
               <tbody>
                 {produtos.map(p => {
@@ -1453,15 +1244,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                   const expandido = expandidos[p.id];
                   return [
                     <tr key={p.id} className="produto-pai-row">
-                      <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div className="product-thumb">👕</div>
-                          <div>
-                            <div style={{ fontWeight: 700 }}>{p.nome}</div>
-                            {p.descricao && <div style={{ fontSize: 11, color: "var(--text2)" }}>{p.descricao}</div>}
-                          </div>
-                        </div>
-                      </td>
+                      <td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="product-thumb">👕</div><div><div style={{ fontWeight: 700 }}>{p.nome}</div>{p.descricao && <div style={{ fontSize: 11, color: "var(--text2)" }}>{p.descricao}</div>}</div></div></td>
                       <td style={{ color: "var(--text2)", fontSize: 12 }}>{p.sku || "—"}</td>
                       <td>{formatBRL(p.precoCompra)}</td>
                       <td style={{ fontWeight: 700 }}>{formatBRL(p.precoVenda)}</td>
@@ -1469,20 +1252,13 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           <span className={`badge ${baixo ? "badge-yellow" : "badge-green"}`}>{estoqueTotal} un.</span>
                           {baixo && <span style={{ fontSize: 11, color: "var(--yellow)" }}>⚠ mín: {p.quantidadeMinima}</span>}
-                          {temVars && (
-                            <button className="produto-expand-btn" onClick={() => toggleExpand(p.id)}>
-                              <Icon name={expandido ? "chevronDown" : "chevronRight"} size={12} />
-                              {vars.length} variant{vars.length === 1 ? "e" : "es"}
-                            </button>
-                          )}
+                          {temVars && <button className="produto-expand-btn" onClick={() => toggleExpand(p.id)}><Icon name={expandido ? "chevronDown" : "chevronRight"} size={12} />{vars.length} variante{vars.length !== 1 ? "s" : ""}</button>}
                         </div>
                       </td>
                       <td><span className={`badge ${margem > 30 ? "badge-green" : margem > 10 ? "badge-gold" : "badge-red"}`}>{margem.toFixed(0)}%</span></td>
                       <td>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <button className="btn-icon" title="Gerenciar Variantes" onClick={() => { setModalVariantes(p); setNovaVariante({ label: "", estoque: "" }); setEditandoVariante(null); }} style={{ color: "var(--blue)", borderColor: "rgba(77,166,255,0.3)" }}>
-                            <Icon name="variant" />
-                          </button>
+                          <button className="btn-icon" title="Gerenciar Variantes" onClick={() => { setModalVariantes(p); setNovaVariante({ label: "", estoque: "" }); setEditandoVariante(null); }} style={{ color: "var(--blue)", borderColor: "rgba(77,166,255,0.3)" }}><Icon name="variant" /></button>
                           <button className="btn-icon" onClick={() => abrirModal(p)}><Icon name="edit" /></button>
                           <button className="btn-icon danger" onClick={() => setConfirmId(p.id)}><Icon name="trash" /></button>
                         </div>
@@ -1492,23 +1268,11 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                       const vBaixo = v.estoque <= (p.quantidadeMinima || 5);
                       return (
                         <tr key={`var-${v.id}`} className="variante-row">
-                          <td className="variante-indent" colSpan={1}>
-                            <div className="variante-label">
-                              <span style={{ color: "var(--text2)", fontSize: 16 }}>↳</span>
-                              <span className="variante-label-badge">{v.label}</span>
-                            </div>
-                          </td>
-                          <td style={{ color: "var(--text2)", fontSize: 11 }}>—</td>
-                          <td style={{ color: "var(--text2)", fontSize: 12 }}>—</td>
-                          <td style={{ color: "var(--text2)", fontSize: 12 }}>—</td>
+                          <td className="variante-indent" colSpan={1}><div className="variante-label"><span style={{ color: "var(--text2)", fontSize: 16 }}>↳</span><span className="variante-label-badge">{v.label}</span></div></td>
+                          <td style={{ color: "var(--text2)", fontSize: 11 }}>—</td><td style={{ color: "var(--text2)", fontSize: 12 }}>—</td><td style={{ color: "var(--text2)", fontSize: 12 }}>—</td>
                           <td><span className={`badge ${v.estoque === 0 ? "badge-red" : vBaixo ? "badge-yellow" : "badge-green"}`}>{v.estoque} un.</span></td>
                           <td></td>
-                          <td>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button className="btn-icon" onClick={() => setEditandoVariante({ id: v.id, label: v.label, estoque: v.estoque })}><Icon name="edit" /></button>
-                              <button className="btn-icon danger" onClick={async () => { await onRemoverVariante(v.id); toast("Variante removida"); }}><Icon name="trash" /></button>
-                            </div>
-                          </td>
+                          <td><div style={{ display: "flex", gap: 6 }}><button className="btn-icon" onClick={() => setEditandoVariante({ id: v.id, label: v.label, estoque: v.estoque })}><Icon name="edit" /></button><button className="btn-icon danger" onClick={async () => { await onRemoverVariante(v.id); toast("Variante removida"); }}><Icon name="trash" /></button></div></td>
                         </tr>
                       );
                     }) : [])
@@ -1516,7 +1280,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                 })}
               </tbody>
             </table>
-          )}
+          }
         </div>
       </div>
 
@@ -1540,14 +1304,8 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                 </div>
               </div>
             )}
-            <div className="input-group">
-              <label className="input-label">Estoque padrão <span style={{ fontWeight: 400, color: "var(--text2)", textTransform: "none" }}>(usado se não houver variantes)</span></label>
-              <input className="input" type="number" min="0" value={form.quantidadeEstoque} onChange={e => set("quantidadeEstoque", e.target.value)} />
-            </div>
+            <div className="input-group"><label className="input-label">Estoque padrão</label><input className="input" type="number" min="0" value={form.quantidadeEstoque} onChange={e => set("quantidadeEstoque", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">Qtd. Mínima (alerta)</label><input className="input" type="number" min="0" value={form.quantidadeMinima} onChange={e => set("quantidadeMinima", e.target.value)} /></div>
-            <div style={{ gridColumn: "1 / -1", background: "rgba(77,166,255,0.07)", border: "1px solid rgba(77,166,255,0.2)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 12, color: "var(--text2)" }}>
-              💡 Depois de criar o produto, clique em <strong style={{ color: "var(--blue)" }}>Gerenciar Variantes</strong> para adicionar combinações como P/Preto, G/Azul, etc.
-            </div>
           </div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
@@ -1560,14 +1318,8 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
         {editandoVariante && (
           <form onSubmit={salvarEdicaoVariante}>
             <div className="form-grid" style={{ gap: 14 }}>
-              <div className="input-group">
-                <label className="input-label">Label da variante</label>
-                <input className="input" placeholder="Ex: P/Preto" value={editandoVariante.label} onChange={e => setEditandoVariante(p => ({ ...p, label: e.target.value }))} />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Estoque</label>
-                <input className="input" type="number" min="0" value={editandoVariante.estoque} onChange={e => setEditandoVariante(p => ({ ...p, estoque: e.target.value }))} />
-              </div>
+              <div className="input-group"><label className="input-label">Label</label><input className="input" value={editandoVariante.label} onChange={e => setEditandoVariante(p => ({ ...p, label: e.target.value }))} /></div>
+              <div className="input-group"><label className="input-label">Estoque</label><input className="input" type="number" min="0" value={editandoVariante.estoque} onChange={e => setEditandoVariante(p => ({ ...p, estoque: e.target.value }))} /></div>
             </div>
             <div className="form-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setEditandoVariante(null)}>Cancelar</button>
@@ -1582,13 +1334,10 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
           const vars = variantesProduto.filter(v => v.produtoPaiId === modalVariantes.id);
           return (
             <div>
-              <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>
-                Cada variante é uma combinação livre, ex: <strong style={{ color: "var(--text)" }}>P/Preto</strong>, <strong style={{ color: "var(--text)" }}>G/Azul</strong>, <strong style={{ color: "var(--text)" }}>M/Branco</strong>. Você define o label livremente.
-              </div>
-              {vars.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text2)", fontSize: 13 }}>Nenhuma variante ainda. Adicione abaixo.</div>
-              ) : (
-                <div className="variante-list" style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>Cada variante é uma combinação livre, ex: <strong style={{ color: "var(--text)" }}>P/Preto</strong>, <strong style={{ color: "var(--text)" }}>G/Azul</strong>.</div>
+              {vars.length === 0
+                ? <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text2)", fontSize: 13 }}>Nenhuma variante ainda.</div>
+                : <div className="variante-list" style={{ marginBottom: 20 }}>
                   {vars.map(v => (
                     <div key={v.id} className="variante-item">
                       <span className="variante-label-badge" style={{ fontSize: 13, padding: "4px 12px" }}>{v.label}</span>
@@ -1600,19 +1349,13 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                     </div>
                   ))}
                 </div>
-              )}
+              }
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
                 <div className="input-label" style={{ marginBottom: 10 }}>Adicionar nova variante</div>
                 <form onSubmit={salvarVariante}>
                   <div className="add-variante-row">
-                    <div className="input-group" style={{ flex: 2 }}>
-                      <label className="input-label">Label (ex: P/Preto, G/Azul)</label>
-                      <input className="input" placeholder="P/Preto" value={novaVariante.label} onChange={e => setNovaVariante(p => ({ ...p, label: e.target.value }))} />
-                    </div>
-                    <div className="input-group" style={{ flex: 1 }}>
-                      <label className="input-label">Estoque</label>
-                      <input className="input" type="number" min="0" placeholder="0" value={novaVariante.estoque} onChange={e => setNovaVariante(p => ({ ...p, estoque: e.target.value }))} />
-                    </div>
+                    <div className="input-group" style={{ flex: 2 }}><label className="input-label">Label (ex: P/Preto)</label><input className="input" placeholder="P/Preto" value={novaVariante.label} onChange={e => setNovaVariante(p => ({ ...p, label: e.target.value }))} /></div>
+                    <div className="input-group" style={{ flex: 1 }}><label className="input-label">Estoque</label><input className="input" type="number" min="0" placeholder="0" value={novaVariante.estoque} onChange={e => setNovaVariante(p => ({ ...p, estoque: e.target.value }))} /></div>
                     <button type="submit" className="btn btn-primary" style={{ alignSelf: "flex-end" }}><Icon name="plus" />Adicionar</button>
                   </div>
                 </form>
@@ -1622,7 +1365,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
         })()}
       </Modal>
 
-      <ConfirmDialog open={!!confirmId} title="Remover Produto?" text="Todas as variantes também serão removidas. Ação irreversível." danger
+      <ConfirmDialog open={!!confirmId} title="Remover Produto?" text="Todas as variantes também serão removidas." danger
         onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Produto removido"); }}
         onCancel={() => setConfirmId(null)} />
     </div>
@@ -1738,20 +1481,17 @@ function Categorias({ dados, onAdicionar, onRemover }) {
 // ─────────────────────────────────────────────
 function Compras({ compras, onAdicionar, onReceber, onRemover }) {
   const [modal, setModal] = useState(false);
-  const [aba, setAba] = useState("pendentes"); // pendentes | historico
+  const [aba, setAba] = useState("pendentes");
   const [confirmId, setConfirmId] = useState(null);
   const [form, setForm] = useState({ fornecedor: "", valor: "", data: hojeLocal(), observacoes: "" });
 
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
-
   function submit(e) {
     e.preventDefault();
     if (!form.fornecedor.trim()) return toast("Informe o fornecedor", "error");
     if (!form.valor || parseFloat(form.valor) <= 0) return toast("Valor inválido", "error");
     onAdicionar({ fornecedor: form.fornecedor.trim(), valor: parseFloat(form.valor), data: form.data || hojeLocal(), observacoes: form.observacoes.trim(), status: "aguardando" });
-    setForm({ fornecedor: "", valor: "", data: hojeLocal(), observacoes: "" });
-    setModal(false);
-    toast("Compra registrada! ✓");
+    setForm({ fornecedor: "", valor: "", data: hojeLocal(), observacoes: "" }); setModal(false); toast("Compra registrada! ✓");
   }
 
   const pendentes = compras.filter(c => c.status === "aguardando").sort((a, b) => new Date(b.data) - new Date(a.data));
@@ -1761,52 +1501,357 @@ function Compras({ compras, onAdicionar, onReceber, onRemover }) {
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Compras</h1>
-          <p className="page-sub">Pedidos de mercadoria — não afeta saldo nem estoque</p>
-        </div>
+        <div><h1 className="page-title">Compras</h1><p className="page-sub">Pedidos de mercadoria</p></div>
         <button className="btn btn-primary" onClick={() => setModal(true)}><Icon name="plus" />Nova Compra</button>
       </div>
-
       {pendentes.length > 0 && (
         <div className="card" style={{ marginBottom: 20, borderColor: "rgba(167,139,250,0.25)", background: "rgba(167,139,250,0.04)" }}>
           <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ fontSize: 24 }}>🛒</div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#a78bfa" }}>{pendentes.length} pedido{pendentes.length > 1 ? "s" : ""} aguardando</div>
-              <div style={{ fontSize: 13, color: "var(--text2)" }}>Total investido: <strong style={{ color: "var(--accent)" }}>{formatBRL(totalPendente)}</strong></div>
-            </div>
+            <div><div style={{ fontWeight: 700, fontSize: 14, color: "#a78bfa" }}>{pendentes.length} pedido{pendentes.length > 1 ? "s" : ""} aguardando</div>
+              <div style={{ fontSize: 13, color: "var(--text2)" }}>Total: <strong style={{ color: "var(--accent)" }}>{formatBRL(totalPendente)}</strong></div></div>
           </div>
         </div>
       )}
-
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <button className={`btn btn-sm ${aba === "pendentes" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAba("pendentes")}>
-          🕐 Aguardando {pendentes.length > 0 && `(${pendentes.length})`}
-        </button>
-        <button className={`btn btn-sm ${aba === "historico" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAba("historico")}>
-          ✅ Recebidos {historico.length > 0 && `(${historico.length})`}
-        </button>
+        <button className={`btn btn-sm ${aba === "pendentes" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAba("pendentes")}>🕐 Aguardando {pendentes.length > 0 && `(${pendentes.length})`}</button>
+        <button className={`btn btn-sm ${aba === "historico" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAba("historico")}>✅ Recebidos {historico.length > 0 && `(${historico.length})`}</button>
       </div>
-
       {aba === "pendentes" && (
         <div className="compras-pendentes-list">
           {pendentes.length === 0
             ? <div className="empty-state"><div className="empty-icon">🛒</div><div className="empty-text">Nenhuma compra pendente</div></div>
             : pendentes.map(c => (
               <div key={c.id} className="compra-card">
-                <div style={{ fontSize: 28, flexShrink: 0 }}>📦</div>
+                <div style={{ fontSize: 28 }}>📦</div>
                 <div className="compra-card-info">
                   <div className="compra-card-fornecedor">{c.fornecedor}</div>
                   <div className="compra-card-valor">{formatBRL(c.valor)}</div>
-                  <div className="compra-card-meta">📅 Pedido em {formatData(c.data)}</div>
+                  <div className="compra-card-meta">📅 {formatData(c.data)}</div>
                   {c.observacoes && <div className="compra-card-obs">{c.observacoes}</div>}
                 </div>
                 <div className="compra-card-actions">
-                  <button className="btn btn-sm btn-success" onClick={() => onReceber(c.id)} title="Marcar como recebido">
-                    <Icon name="check" size={13} />Recebido
-                  </button>
-                  <button className="btn-icon danger" onClick={() => setConfirmId(c.id)} title="Remover"><Icon name="trash" /></button>
+                  <button className="btn btn-sm btn-success" onClick={() => onReceber(c.id)}><Icon name="check" size={13} />Recebido</button>
+                  <button className="btn-icon danger" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      )}
+      {aba === "historico" && (
+        <div className="card"><div className="table-wrap">
+          {historico.length === 0
+            ? <div className="empty-state"><div className="empty-icon">📋</div><div className="empty-text">Nenhum recebimento</div></div>
+            : <table><thead><tr><th>Pedido em</th><th>Fornecedor</th><th>Recebido em</th><th style={{ textAlign: "right" }}>Valor</th><th>Obs.</th><th></th></tr></thead>
+              <tbody>{historico.map(c => (
+                <tr key={c.id}>
+                  <td style={{ color: "var(--text2)", whiteSpace: "nowrap" }}>{formatData(c.data)}</td>
+                  <td style={{ fontWeight: 600 }}>{c.fornecedor}</td>
+                  <td><span className="badge badge-green">✓ {formatData(c.dataRecebimento)}</span></td>
+                  <td style={{ fontWeight: 700, color: "var(--accent)", textAlign: "right" }}>{formatBRL(c.valor)}</td>
+                  <td style={{ color: "var(--text2)", fontSize: 12 }}>{c.observacoes || "—"}</td>
+                  <td><button className="btn-icon danger" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button></td>
+                </tr>
+              ))}</tbody></table>
+          }
+        </div></div>
+      )}
+      <Modal open={modal} onClose={() => { setModal(false); setForm({ fornecedor: "", valor: "", data: hojeLocal(), observacoes: "" }); }} title="Nova Compra">
+        <form onSubmit={submit}>
+          <div className="form-grid" style={{ gap: 14 }}>
+            <div className="input-group"><label className="input-label">Fornecedor *</label><input className="input" placeholder="Ex: Fornecedor SP" value={form.fornecedor} onChange={e => set("fornecedor", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Valor (R$) *</label><input className="input" type="number" step="0.01" min="0" value={form.valor} onChange={e => set("valor", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Data do Pedido</label><input className="input" type="date" value={form.data} onChange={e => set("data", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Observações</label><textarea className="input" value={form.observacoes} onChange={e => set("observacoes", e.target.value)} style={{ minHeight: 70 }} /></div>
+          </div>
+          <div className="warn-box" style={{ marginTop: 14 }}>🛒 Esta compra não afeta o saldo nem o estoque automaticamente.</div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
+            <button type="submit" className="btn btn-primary"><Icon name="check" />Registrar Compra</button>
+          </div>
+        </form>
+      </Modal>
+      <ConfirmDialog open={!!confirmId} title="Remover Compra?" text="A compra será removida." danger onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Removida"); }} onCancel={() => setConfirmId(null)} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ENCOMENDAS
+// ─────────────────────────────────────────────
+function Encomendas({ encomendas, onAdicionar, onAtualizar, onRemover }) {
+  const [modal, setModal] = useState(false);
+  const [editando, setEditando] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
+  const [aba, setAba] = useState("ativas");
+  const [form, setForm] = useState({ cliente: "", telefone: "", produto: "", quantidade: "1", valorTotal: "", sinal: "0", dataEntrega: "", observacoes: "", status: "aguardando" });
+
+  function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
+
+  function abrirModal(enc = null) {
+    if (enc) {
+      setEditando(enc.id);
+      setForm({ cliente: enc.cliente, telefone: enc.telefone || "", produto: enc.produto, quantidade: enc.quantidade, valorTotal: enc.valorTotal, sinal: enc.sinal || "0", dataEntrega: enc.dataEntrega || "", observacoes: enc.observacoes || "", status: enc.status });
+    } else {
+      setEditando(null);
+      setForm({ cliente: "", telefone: "", produto: "", quantidade: "1", valorTotal: "", sinal: "0", dataEntrega: "", observacoes: "", status: "aguardando" });
+    }
+    setModal(true);
+  }
+
+  function submit(e) {
+    e.preventDefault();
+    if (!form.cliente.trim()) return toast("Informe o nome do cliente", "error");
+    if (!form.produto.trim()) return toast("Informe o produto", "error");
+    if (!form.valorTotal || parseFloat(form.valorTotal) <= 0) return toast("Informe o valor total", "error");
+    const payload = { cliente: form.cliente.trim(), telefone: form.telefone.trim(), produto: form.produto.trim(), quantidade: parseInt(form.quantidade) || 1, valorTotal: parseFloat(form.valorTotal), sinal: parseFloat(form.sinal) || 0, dataEntrega: form.dataEntrega || "", observacoes: form.observacoes.trim(), status: form.status };
+    if (editando) { onAtualizar(editando, payload); toast("Encomenda atualizada ✓"); }
+    else { onAdicionar(payload); toast("Encomenda registrada! ✓"); }
+    setModal(false);
+  }
+
+  function avancarStatus(enc) {
+    const proximo = enc.status === "aguardando" ? "pronto" : enc.status === "pronto" ? "entregue" : null;
+    if (!proximo) return;
+    onAtualizar(enc.id, { status: proximo, ...(proximo === "entregue" ? { dataEntregue: hojeLocal() } : {}) });
+    toast(proximo === "pronto" ? "Marcado como pronto! 🎉" : "Entregue! ✅");
+  }
+
+  function gerarWhatsApp(enc) {
+    if (!enc.telefone) return toast("Sem telefone cadastrado", "error");
+    const restante = enc.valorTotal - (enc.sinal || 0);
+    const fone = enc.telefone.replace(/\D/g, "");
+    const msg = `Olá ${enc.cliente}! 😊\n\nSua encomenda está *pronta*! 🎉\n\n📦 *Produto:* ${enc.produto} (${enc.quantidade} un.)\n💰 *Valor total:* R$ ${enc.valorTotal.toFixed(2).replace(".", ",")}\n${enc.sinal > 0 ? `✅ *Sinal pago:* R$ ${enc.sinal.toFixed(2).replace(".", ",")}\n💵 *Restante:* R$ ${restante.toFixed(2).replace(".", ",")}\n` : ""}📍 FitMGwear\n\nAguardamos você! 🙌`;
+    window.open(`https://wa.me/55${fone}?text=${encodeURIComponent(msg)}`, "_blank");
+  }
+
+  const STATUS_LABEL = { aguardando: "Aguardando", pronto: "Pronto p/ retirar", entregue: "Entregue" };
+  const STATUS_BADGE = { aguardando: "badge-yellow", pronto: "badge-blue", entregue: "badge-green" };
+  const STATUS_BTN = { aguardando: { label: "✅ Marcar Pronto", cls: "btn-info" }, pronto: { label: "📦 Marcar Entregue", cls: "btn-success" } };
+
+  const hoje = hojeLocal();
+  const ativas = encomendas.filter(e => e.status !== "entregue").sort((a, b) => {
+    if (a.dataEntrega && b.dataEntrega) return new Date(a.dataEntrega) - new Date(b.dataEntrega);
+    return new Date(b.criadoEm) - new Date(a.criadoEm);
+  });
+  const entregues = encomendas.filter(e => e.status === "entregue").sort((a, b) => new Date(b.dataEntregue || b.criadoEm) - new Date(a.dataEntregue || a.criadoEm));
+  const atrasadas = ativas.filter(e => e.dataEntrega && e.dataEntrega < hoje);
+  const totalAtivas = ativas.reduce((s, e) => s + e.valorTotal, 0);
+  const totalSinais = ativas.reduce((s, e) => s + (e.sinal || 0), 0);
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><h1 className="page-title">Encomendas</h1><p className="page-sub">Pedidos sob encomenda dos clientes</p></div>
+        <button className="btn btn-primary" onClick={() => abrirModal()}><Icon name="plus" />Nova Encomenda</button>
+      </div>
+
+      {ativas.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 20 }}>
+          <div className="stat-card blue" style={{ padding: "18px 20px" }}><div className="stat-label">Encomendas Ativas</div><div className="stat-value" style={{ fontSize: 28 }}>{ativas.length}</div></div>
+          <div className="stat-card gold" style={{ padding: "18px 20px" }}><div className="stat-label">A Receber</div><div className="stat-value" style={{ fontSize: 22 }}>{formatBRL(totalAtivas - totalSinais)}</div><div className="stat-sub">Sinais: {formatBRL(totalSinais)}</div></div>
+          <div className={`stat-card ${atrasadas.length > 0 ? "red" : "green"}`} style={{ padding: "18px 20px" }}><div className="stat-label">Atrasadas</div><div className="stat-value" style={{ fontSize: 28 }}>{atrasadas.length}</div></div>
+        </div>
+      )}
+
+      {atrasadas.length > 0 && (
+        <div className="card" style={{ marginBottom: 16, borderColor: "rgba(240,96,96,0.3)", background: "rgba(240,96,96,0.04)" }}>
+          <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 22 }}>⚠️</div>
+            <div><div style={{ fontWeight: 700, color: "var(--red)", fontSize: 13 }}>Encomendas atrasadas!</div>
+              <div style={{ fontSize: 12, color: "var(--text2)" }}>{atrasadas.map(e => e.cliente).join(", ")}</div></div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button className={`btn btn-sm ${aba === "ativas" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAba("ativas")}>🕐 Ativas {ativas.length > 0 && `(${ativas.length})`}</button>
+        <button className={`btn btn-sm ${aba === "entregues" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAba("entregues")}>✅ Entregues {entregues.length > 0 && `(${entregues.length})`}</button>
+      </div>
+
+      {aba === "ativas" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {ativas.length === 0
+            ? <div className="empty-state"><div className="empty-icon">📦</div><div className="empty-text">Nenhuma encomenda ativa</div></div>
+            : ativas.map(enc => {
+              const restante = enc.valorTotal - (enc.sinal || 0);
+              const atrasada = enc.dataEntrega && enc.dataEntrega < hoje;
+              return (
+                <div key={enc.id} className="compra-card" style={{ borderColor: atrasada ? "rgba(240,96,96,0.35)" : undefined }}>
+                  <div style={{ fontSize: 28, flexShrink: 0 }}>📦</div>
+                  <div className="compra-card-info" style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>{enc.cliente}</span>
+                      {enc.telefone && <span style={{ fontSize: 12, color: "var(--text2)" }}>📱 {enc.telefone}</span>}
+                      <span className={`badge ${STATUS_BADGE[enc.status]}`}>{STATUS_LABEL[enc.status]}</span>
+                      {atrasada && <span className="badge badge-red">⚠ Atrasada</span>}
+                    </div>
+                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, color: "var(--accent)", marginTop: 2 }}>
+                      {formatBRL(enc.valorTotal)}
+                      {enc.sinal > 0 && <span style={{ fontSize: 13, color: "var(--green)", marginLeft: 10, fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>✓ Sinal: {formatBRL(enc.sinal)}</span>}
+                      {restante > 0 && enc.sinal > 0 && <span style={{ fontSize: 13, color: "var(--yellow)", marginLeft: 8, fontFamily: "'DM Sans', sans-serif" }}>Restante: {formatBRL(restante)}</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 4 }}>
+                      🛍️ {enc.produto} · {enc.quantidade} un.
+                      {enc.dataEntrega && <span style={{ marginLeft: 10 }}>📅 Entrega: <strong style={{ color: atrasada ? "var(--red)" : "var(--text)" }}>{formatData(enc.dataEntrega)}</strong></span>}
+                    </div>
+                    {enc.observacoes && <div className="compra-card-obs">{enc.observacoes}</div>}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    {STATUS_BTN[enc.status] && <button className={`btn btn-sm ${STATUS_BTN[enc.status].cls}`} onClick={() => avancarStatus(enc)}>{STATUS_BTN[enc.status].label}</button>}
+                    {enc.status === "pronto" && enc.telefone && (
+                      <button className="btn btn-sm btn-whatsapp" onClick={() => gerarWhatsApp(enc)}>📲 WhatsApp</button>
+                    )}
+                    <button className="btn-icon" onClick={() => abrirModal(enc)}><Icon name="edit" /></button>
+                    <button className="btn-icon danger" onClick={() => setConfirmId(enc.id)}><Icon name="trash" /></button>
+                  </div>
+                </div>
+              );
+            })
+          }
+        </div>
+      )}
+
+      {aba === "entregues" && (
+        <div className="card"><div className="table-wrap">
+          {entregues.length === 0
+            ? <div className="empty-state"><div className="empty-icon">📋</div><div className="empty-text">Nenhuma entrega ainda</div></div>
+            : <table><thead><tr><th>Cliente</th><th>Produto</th><th>Valor</th><th>Entregue em</th><th></th></tr></thead>
+              <tbody>{entregues.map(enc => (
+                <tr key={enc.id}>
+                  <td style={{ fontWeight: 600 }}>{enc.cliente}<div style={{ fontSize: 11, color: "var(--text2)" }}>{enc.telefone}</div></td>
+                  <td>{enc.produto} · {enc.quantidade} un.</td>
+                  <td style={{ fontWeight: 700, color: "var(--accent)" }}>{formatBRL(enc.valorTotal)}</td>
+                  <td><span className="badge badge-green">✓ {formatData(enc.dataEntregue)}</span></td>
+                  <td><button className="btn-icon danger" onClick={() => setConfirmId(enc.id)}><Icon name="trash" /></button></td>
+                </tr>
+              ))}</tbody></table>
+          }
+        </div></div>
+      )}
+
+      <Modal open={modal} onClose={() => setModal(false)} title={editando ? "Editar Encomenda" : "Nova Encomenda"} wide>
+        <form onSubmit={submit}>
+          <div className="form-grid form-grid-2" style={{ gap: 14 }}>
+            <div className="input-group"><label className="input-label">Nome do Cliente *</label><input className="input" placeholder="Ex: Maria Silva" value={form.cliente} onChange={e => set("cliente", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Telefone / WhatsApp</label><input className="input" placeholder="(11) 99999-9999" value={form.telefone} onChange={e => set("telefone", e.target.value)} /></div>
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Produto(s) Pedido(s) *</label><input className="input" placeholder="Ex: Camiseta Dry-Fit P/Preta + Short M/Azul" value={form.produto} onChange={e => set("produto", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Quantidade</label><input className="input" type="number" min="1" value={form.quantidade} onChange={e => set("quantidade", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Data de Entrega</label><input className="input" type="date" value={form.dataEntrega} onChange={e => set("dataEntrega", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Valor Total (R$) *</label><input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.valorTotal} onChange={e => set("valorTotal", e.target.value)} /></div>
+            <div className="input-group">
+              <label className="input-label">Sinal / Adiantamento (R$)</label>
+              <input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.sinal} onChange={e => set("sinal", e.target.value)} />
+              {parseFloat(form.sinal) > 0 && parseFloat(form.valorTotal) > 0 && (
+                <span style={{ fontSize: 11, color: "var(--green)", marginTop: 3 }}>Restante: {formatBRL(parseFloat(form.valorTotal) - parseFloat(form.sinal))}</span>
+              )}
+            </div>
+            {editando && (
+              <div className="input-group">
+                <label className="input-label">Status</label>
+                <select className="input" value={form.status} onChange={e => set("status", e.target.value)}>
+                  <option value="aguardando">Aguardando</option>
+                  <option value="pronto">Pronto p/ retirar</option>
+                  <option value="entregue">Entregue</option>
+                </select>
+              </div>
+            )}
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Observações</label><textarea className="input" placeholder="Detalhes adicionais..." value={form.observacoes} onChange={e => set("observacoes", e.target.value)} style={{ minHeight: 70 }} /></div>
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
+            <button type="submit" className="btn btn-primary"><Icon name="check" />{editando ? "Salvar" : "Registrar Encomenda"}</button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog open={!!confirmId} title="Remover Encomenda?" text="A encomenda será removida permanentemente." danger
+        onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Removida"); }}
+        onCancel={() => setConfirmId(null)} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// FIADO / COBRANÇAS
+// ─────────────────────────────────────────────
+function Fiado({ fiados, onAdicionar, onPagar, onRemover }) {
+  const [modal, setModal] = useState(false);
+  const [confirmId, setConfirmId] = useState(null);
+  const [aba, setAba] = useState("pendentes");
+  const [form, setForm] = useState({ nome: "", telefone: "", valor: "", data: hojeLocal(), formaPagamento: "pix", observacoes: "" });
+
+  function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
+
+  function submit(e) {
+    e.preventDefault();
+    if (!form.nome.trim()) return toast("Informe o nome", "error");
+    if (!form.valor || parseFloat(form.valor) <= 0) return toast("Valor inválido", "error");
+    onAdicionar({ nome: form.nome.trim(), telefone: form.telefone.trim(), valor: parseFloat(form.valor), data: form.data || hojeLocal(), formaPagamento: form.formaPagamento, observacoes: form.observacoes.trim(), status: "pendente" });
+    setForm({ nome: "", telefone: "", valor: "", data: hojeLocal(), formaPagamento: "pix", observacoes: "" });
+    setModal(false); toast("Fiado registrado! ✓");
+  }
+
+  const FORMA_LABEL = { pix: "Pix", dinheiro: "Dinheiro", cartao: "Cartão", transferencia: "Transferência" };
+  const FORMA_EMOJI = { pix: "💠", dinheiro: "💵", cartao: "💳", transferencia: "🏦" };
+
+  function gerarWhatsApp(f) {
+    if (!f.telefone) return toast("Sem telefone cadastrado", "error");
+    const fone = f.telefone.replace(/\D/g, "");
+    const forma = FORMA_LABEL[f.formaPagamento] || f.formaPagamento;
+    const emoji = FORMA_EMOJI[f.formaPagamento] || "💰";
+    const msg = `Olá ${f.nome}! 😊\n\nPassando pra lembrar do valor que ficou em aberto aqui na *FitMGwear*.\n\n💰 *Valor:* R$ ${f.valor.toFixed(2).replace(".", ",")}\n${emoji} *Forma combinada:* ${forma}\n📅 *Data:* ${formatData(f.data)}\n${f.observacoes ? `📝 *Ref.:* ${f.observacoes}\n` : ""}\nQualquer dúvida, é só chamar! Obrigada 🙏`;
+    window.open(`https://wa.me/55${fone}?text=${encodeURIComponent(msg)}`, "_blank");
+  }
+
+  const pendentes = fiados.filter(f => f.status === "pendente").sort((a, b) => new Date(a.data) - new Date(b.data));
+  const pagos = fiados.filter(f => f.status === "pago").sort((a, b) => new Date(b.dataPagamento || b.criadoEm) - new Date(a.dataPagamento || a.criadoEm));
+  const totalPendente = pendentes.reduce((s, f) => s + f.valor, 0);
+  const totalRecebido = pagos.reduce((s, f) => s + f.valor, 0);
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><h1 className="page-title">Fiado / Cobranças</h1><p className="page-sub">Controle de valores em aberto e lembretes de cobrança</p></div>
+        <button className="btn btn-primary" onClick={() => setModal(true)}><Icon name="plus" />Novo Fiado</button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 20 }}>
+        <div className="stat-card red" style={{ padding: "18px 20px" }}><div className="stat-label">Em Aberto</div><div className="stat-value" style={{ fontSize: 22 }}>{formatBRL(totalPendente)}</div><div className="stat-sub">{pendentes.length} pessoa{pendentes.length !== 1 ? "s" : ""}</div></div>
+        <div className="stat-card green" style={{ padding: "18px 20px" }}><div className="stat-label">Já Recebido</div><div className="stat-value" style={{ fontSize: 22 }}>{formatBRL(totalRecebido)}</div><div className="stat-sub">{pagos.length} pagamento{pagos.length !== 1 ? "s" : ""}</div></div>
+        <div className="stat-card gold" style={{ padding: "18px 20px" }}><div className="stat-label">Total Fiado</div><div className="stat-value" style={{ fontSize: 22 }}>{formatBRL(totalPendente + totalRecebido)}</div></div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button className={`btn btn-sm ${aba === "pendentes" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAba("pendentes")}>💰 Em Aberto {pendentes.length > 0 && `(${pendentes.length})`}</button>
+        <button className={`btn btn-sm ${aba === "pagos" ? "btn-primary" : "btn-secondary"}`} onClick={() => setAba("pagos")}>✅ Recebidos {pagos.length > 0 && `(${pagos.length})`}</button>
+      </div>
+
+      {aba === "pendentes" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {pendentes.length === 0
+            ? <div className="empty-state"><div className="empty-icon">🤝</div><div className="empty-text">Nenhum fiado pendente</div></div>
+            : pendentes.map(f => (
+              <div key={f.id} className="compra-card">
+                <div style={{ fontSize: 28, flexShrink: 0 }}>🤝</div>
+                <div className="compra-card-info" style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>{f.nome}</span>
+                    {f.telefone && <span style={{ fontSize: 12, color: "var(--text2)" }}>📱 {f.telefone}</span>}
+                    <span className="badge badge-yellow">Pendente</span>
+                  </div>
+                  <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: "var(--red)", marginTop: 2 }}>{formatBRL(f.valor)}</div>
+                  <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 3, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <span>📅 {formatData(f.data)}</span>
+                    <span>{FORMA_EMOJI[f.formaPagamento]} {FORMA_LABEL[f.formaPagamento]}</span>
+                  </div>
+                  {f.observacoes && <div className="compra-card-obs">{f.observacoes}</div>}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                  <button className="btn btn-sm btn-success" onClick={() => onPagar(f.id)}><Icon name="check" size={13} />Recebido</button>
+                  {f.telefone && <button className="btn btn-sm btn-whatsapp" onClick={() => gerarWhatsApp(f)}>📲 Cobrar</button>}
+                  <button className="btn-icon danger" onClick={() => setConfirmId(f.id)}><Icon name="trash" /></button>
                 </div>
               </div>
             ))
@@ -1814,49 +1859,52 @@ function Compras({ compras, onAdicionar, onReceber, onRemover }) {
         </div>
       )}
 
-      {aba === "historico" && (
-        <div className="card">
-          <div className="table-wrap">
-            {historico.length === 0
-              ? <div className="empty-state"><div className="empty-icon">📋</div><div className="empty-text">Nenhum recebimento registrado</div></div>
-              : <table>
-                  <thead><tr><th>Pedido em</th><th>Fornecedor</th><th>Recebido em</th><th style={{ textAlign: "right" }}>Valor</th><th>Obs.</th><th></th></tr></thead>
-                  <tbody>{historico.map(c => (
-                    <tr key={c.id}>
-                      <td style={{ color: "var(--text2)", whiteSpace: "nowrap" }}>{formatData(c.data)}</td>
-                      <td style={{ fontWeight: 600 }}>{c.fornecedor}</td>
-                      <td style={{ whiteSpace: "nowrap" }}><span className="badge badge-green">✓ {formatData(c.dataRecebimento)}</span></td>
-                      <td style={{ fontWeight: 700, color: "var(--accent)", textAlign: "right", whiteSpace: "nowrap" }}>{formatBRL(c.valor)}</td>
-                      <td style={{ color: "var(--text2)", fontSize: 12 }}>{c.observacoes || "—"}</td>
-                      <td><button className="btn-icon danger" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-            }
-          </div>
-        </div>
+      {aba === "pagos" && (
+        <div className="card"><div className="table-wrap">
+          {pagos.length === 0
+            ? <div className="empty-state"><div className="empty-icon">📋</div><div className="empty-text">Nenhum pagamento</div></div>
+            : <table><thead><tr><th>Nome</th><th>Valor</th><th>Forma</th><th>Pago em</th><th>Obs.</th><th></th></tr></thead>
+              <tbody>{pagos.map(f => (
+                <tr key={f.id}>
+                  <td style={{ fontWeight: 600 }}>{f.nome}<div style={{ fontSize: 11, color: "var(--text2)" }}>{f.telefone}</div></td>
+                  <td style={{ fontWeight: 700, color: "var(--green)" }}>{formatBRL(f.valor)}</td>
+                  <td><span className="badge badge-blue">{FORMA_EMOJI[f.formaPagamento]} {FORMA_LABEL[f.formaPagamento]}</span></td>
+                  <td><span className="badge badge-green">✓ {formatData(f.dataPagamento)}</span></td>
+                  <td style={{ color: "var(--text2)", fontSize: 12 }}>{f.observacoes || "—"}</td>
+                  <td><button className="btn-icon danger" onClick={() => setConfirmId(f.id)}><Icon name="trash" /></button></td>
+                </tr>
+              ))}</tbody></table>
+          }
+        </div></div>
       )}
 
-      <Modal open={modal} onClose={() => { setModal(false); setForm({ fornecedor: "", valor: "", data: hojeLocal(), observacoes: "" }); }} title="Nova Compra">
+      <Modal open={modal} onClose={() => setModal(false)} title="Novo Fiado">
         <form onSubmit={submit}>
           <div className="form-grid" style={{ gap: 14 }}>
-            <div className="input-group"><label className="input-label">Fornecedor *</label><input className="input" placeholder="Ex: Fornecedor SP" value={form.fornecedor} onChange={e => set("fornecedor", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Nome *</label><input className="input" placeholder="Ex: Ana Lima" value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Telefone / WhatsApp</label><input className="input" placeholder="(11) 99999-9999" value={form.telefone} onChange={e => set("telefone", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">Valor (R$) *</label><input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={form.valor} onChange={e => set("valor", e.target.value)} /></div>
-            <div className="input-group"><label className="input-label">Data do Pedido</label><input className="input" type="date" value={form.data} onChange={e => set("data", e.target.value)} /></div>
-            <div className="input-group"><label className="input-label">Observações</label><textarea className="input" value={form.observacoes} onChange={e => set("observacoes", e.target.value)} placeholder="Ex: 10 camisetas dry-fit, 5 shorts..." style={{ minHeight: 70 }} /></div>
+            <div className="input-group"><label className="input-label">Data</label><input className="input" type="date" value={form.data} onChange={e => set("data", e.target.value)} /></div>
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+              <label className="input-label">Forma de Pagamento Combinada</label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                {[{ value: "pix", label: "💠 Pix" }, { value: "dinheiro", label: "💵 Dinheiro" }, { value: "cartao", label: "💳 Cartão" }, { value: "transferencia", label: "🏦 Transferência" }].map(op => (
+                  <div key={op.value} className={`tag-opt ${form.formaPagamento === op.value ? "selected" : ""}`} onClick={() => set("formaPagamento", op.value)}>{op.label}</div>
+                ))}
+              </div>
+            </div>
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Observações</label><textarea className="input" placeholder="Ex: 2 camisetas dry-fit" value={form.observacoes} onChange={e => set("observacoes", e.target.value)} style={{ minHeight: 60 }} /></div>
           </div>
-          <div className="warn-box" style={{ marginTop: 14 }}>
-            🛒 Esta compra <strong>não afeta o saldo nem o estoque</strong>. Quando a mercadoria chegar, marque como "Recebido" e atualize o estoque manualmente.
-          </div>
+          <div className="info-box" style={{ marginTop: 14 }}>💡 Clique em <strong>📲 Cobrar</strong> para abrir uma mensagem pronta no WhatsApp.</div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
-            <button type="submit" className="btn btn-primary"><Icon name="check" />Registrar Compra</button>
+            <button type="submit" className="btn btn-primary"><Icon name="check" />Registrar Fiado</button>
           </div>
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!confirmId} title="Remover Compra?" text="A compra será removida do sistema." danger
-        onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Compra removida"); }}
+      <ConfirmDialog open={!!confirmId} title="Remover registro?" text="Permanentemente." danger
+        onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Removido"); }}
         onCancel={() => setConfirmId(null)} />
     </div>
   );
@@ -1872,6 +1920,8 @@ const NAV_BASE = [
   { id: "transacoes", label: "Transações", icon: "categories", group: "Dados" },
   { id: "estoque", label: "Estoque", icon: "stock", group: "Dados" },
   { id: "compras", label: "Compras", icon: "cart", group: "Dados" },
+  { id: "encomendas", label: "Encomendas", icon: "inbox", group: "Dados" },
+  { id: "fiado", label: "Fiado / Cobranças", icon: "warn", group: "Dados" },
   { id: "clientes", label: "Clientes", icon: "clients", group: "Dados" },
   { id: "categorias", label: "Categorias", icon: "categories", group: "Dados" },
   { id: "relatorio", label: "Relatório PDF", icon: "pdf", group: "Dados" },
@@ -1982,8 +2032,10 @@ export default function App() {
   const [categorias, loadingCat] = useCollection("categorias");
   const [variantesProduto, loadingVP] = useCollection("variantesProduto");
   const [compras, loadingCo] = useCollection("compras");
+  const [encomendas, loadingEn] = useCollection("encomendas");
+  const [fiados, loadingFi] = useCollection("fiados");
 
-  const loading = loadingT || loadingP || loadingC || loadingCat || loadingVP || loadingCo;
+  const loading = loadingT || loadingP || loadingC || loadingCat || loadingVP || loadingCo || loadingEn || loadingFi;
 
   useEffect(() => {
     if (!loadingCat && categorias.length === 0) {
@@ -1991,10 +2043,11 @@ export default function App() {
     }
   }, [loadingCat, categorias.length]);
 
-  const dados = { transacoes, produtos, clientes, categorias, variantesProduto, compras };
+  const dados = { transacoes, produtos, clientes, categorias, variantesProduto, compras, encomendas, fiados };
 
   async function handleLogout() { await signOut(auth); setPage("painel"); }
 
+  // Compras
   async function adicionarCompra(c) { const id = uid(); await setDoc(doc(db, "compras", id), { ...c, id, criadoEm: new Date().toISOString() }); }
   async function receberCompra(id) {
     const c = compras.find(x => x.id === id);
@@ -2003,39 +2056,45 @@ export default function App() {
   }
   async function removerCompra(id) { await deleteDoc(doc(db, "compras", id)); }
 
+  // Encomendas
+  async function adicionarEncomenda(e) { const id = uid(); await setDoc(doc(db, "encomendas", id), { ...e, id, criadoEm: new Date().toISOString() }); }
+  async function atualizarEncomenda(id, upd) { const e = encomendas.find(x => x.id === id); if (e) await setDoc(doc(db, "encomendas", id), { ...e, ...upd }); }
+  async function removerEncomenda(id) { await deleteDoc(doc(db, "encomendas", id)); }
+
+  // Fiado
+  async function adicionarFiado(f) { const id = uid(); await setDoc(doc(db, "fiados", id), { ...f, id, criadoEm: new Date().toISOString() }); }
+  async function pagarFiado(id) { const f = fiados.find(x => x.id === id); if (f) await setDoc(doc(db, "fiados", id), { ...f, status: "pago", dataPagamento: hojeLocal() }); toast("Marcado como pago! ✓"); }
+  async function removerFiado(id) { await deleteDoc(doc(db, "fiados", id)); }
+
+  // Transações
   async function adicionarTransacao(t) {
     const id = uid();
-    // ✅ FIX 1: usa hojeLocal() como fallback de data, não toISOString()
     const novaT = { ...t, id, data: t.data || hojeLocal() };
-
     if (t.produtoId && t.tipo === "venda") {
       if (t.varianteId) {
         const variante = variantesProduto.find(v => v.id === t.varianteId);
-        if (variante) {
-          await setDoc(doc(db, "variantesProduto", variante.id), { ...variante, estoque: Math.max(0, variante.estoque - t.quantidade) });
-        }
+        if (variante) await setDoc(doc(db, "variantesProduto", variante.id), { ...variante, estoque: Math.max(0, variante.estoque - t.quantidade) });
       } else {
         const prod = produtos.find(p => p.id === t.produtoId);
-        if (prod) {
-          await setDoc(doc(db, "produtos", prod.id), { ...prod, quantidadeEstoque: Math.max(0, prod.quantidadeEstoque - t.quantidade) });
-        }
+        if (prod) await setDoc(doc(db, "produtos", prod.id), { ...prod, quantidadeEstoque: Math.max(0, prod.quantidadeEstoque - t.quantidade) });
       }
     }
-
     await setDoc(doc(db, "transacoes", id), novaT);
     toast(t.tipo === "venda" ? "Venda registrada! ✓" : "Despesa registrada! ✓");
     setPage("transacoes");
   }
-
   async function removerTransacao(id) { await deleteDoc(doc(db, "transacoes", id)); }
 
+  // Clientes
   async function adicionarCliente(c) { const id = uid(); await setDoc(doc(db, "clientes", id), { ...c, id, dataCriacao: new Date().toISOString() }); }
   async function removerCliente(id) { await deleteDoc(doc(db, "clientes", id)); }
   async function atualizarCliente(id, upd) { const c = clientes.find(x => x.id === id); if (c) await setDoc(doc(db, "clientes", id), { ...c, ...upd }); }
 
+  // Categorias
   async function adicionarCategoria(c) { const id = uid(); await setDoc(doc(db, "categorias", id), { ...c, id }); }
   async function removerCategoria(id) { await deleteDoc(doc(db, "categorias", id)); }
 
+  // Produtos
   async function adicionarProduto(p) { const id = uid(); await setDoc(doc(db, "produtos", id), { ...p, id, dataCriacao: new Date().toISOString() }); }
   async function removerProduto(id) {
     await deleteDoc(doc(db, "produtos", id));
@@ -2044,6 +2103,7 @@ export default function App() {
   }
   async function atualizarProduto(id, upd) { const p = produtos.find(x => x.id === id); if (p) await setDoc(doc(db, "produtos", id), { ...p, ...upd }); }
 
+  // Variantes
   async function adicionarVariante(v) { const id = uid(); await setDoc(doc(db, "variantesProduto", id), { ...v, id, criadoEm: new Date().toISOString() }); }
   async function removerVariante(id) { await deleteDoc(doc(db, "variantesProduto", id)); }
   async function atualizarVariante(id, upd) { const v = variantesProduto.find(x => x.id === id); if (v) await setDoc(doc(db, "variantesProduto", id), { ...v, ...upd }); }
@@ -2072,6 +2132,8 @@ export default function App() {
     if (page === "categorias") return <Categorias dados={dados} onAdicionar={adicionarCategoria} onRemover={removerCategoria} />;
     if (page === "relatorio") return <RelatorioPDF dados={dados} />;
     if (page === "compras") return <Compras compras={compras} onAdicionar={adicionarCompra} onReceber={receberCompra} onRemover={removerCompra} />;
+    if (page === "encomendas") return <Encomendas encomendas={encomendas} onAdicionar={adicionarEncomenda} onAtualizar={atualizarEncomenda} onRemover={removerEncomenda} />;
+    if (page === "fiado") return <Fiado fiados={fiados} onAdicionar={adicionarFiado} onPagar={pagarFiado} onRemover={removerFiado} />;
     if (page === "usuarios" && isDono) return <GerenciarUsuarios usuarioAtual={usuario} />;
   }
 
