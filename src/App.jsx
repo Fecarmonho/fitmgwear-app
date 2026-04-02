@@ -297,6 +297,19 @@ const CSS = `
   .compra-card-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
   .compras-pendentes-list { display: flex; flex-direction: column; gap: 10px; }
 
+  /* ── CARRINHO DE COMPRAS ── */
+  .cart-section { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 18px; margin-bottom: 20px; }
+  .cart-section-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px; color: var(--text2); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .cart-add-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: flex-end; }
+  .cart-item-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-top: 8px; }
+  .cart-item-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+  .cart-item-qty { font-size: 12px; color: var(--text2); padding: 3px 10px; background: var(--surface2); border-radius: 99px; }
+  .cart-item-price { font-size: 13px; font-weight: 700; color: var(--accent); min-width: 90px; text-align: right; }
+  .cart-total-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .cart-total-label { font-size: 13px; color: var(--text2); font-weight: 700; }
+  .cart-total-value { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--accent); }
+  .cart-empty { text-align: center; padding: 22px; color: var(--text2); font-size: 13px; }
+
   @media (max-width: 1200px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .page { padding: 28px 28px; }
@@ -309,6 +322,7 @@ const CSS = `
     .page { padding:20px 16px; padding-top:80px; }
     .stats-grid { grid-template-columns:1fr 1fr; }
     .form-grid-2, .form-grid-3 { grid-template-columns:1fr; }
+    .cart-add-row { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 420px) {
     .stats-grid { grid-template-columns: 1fr; }
@@ -345,6 +359,7 @@ const Icon = ({ name, size = 16 }) => {
     cart: <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96C5 16.1 6.9 18 9 18h12v-2H9.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 23.43 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" fill="currentColor"/>,
     inbox: <path d="M19 3H4.99C3.89 3 3 3.9 3 5L3 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.34 3-3 3s-3-1.34-3-3H4.99V5H19v10z" fill="currentColor"/>,
     handshake: <path d="M11 5L6 9H2v6h4l5 4V5zm7.54 1.46a7 7 0 0 1 0 9.9l-1.41-1.41a5 5 0 0 0 0-7.07l1.41-1.42zM15.71 8.3a3 3 0 0 1 0 4.24l-1.42-1.42a1 1 0 0 0 0-1.41L15.71 8.3z" fill="currentColor"/>,
+    balanco: <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="currentColor"/>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -806,6 +821,162 @@ ${produtosAbaixo.length > 0 ? `<div style="background:#fffbeb;border:1px solid #
 }
 
 // ─────────────────────────────────────────────
+// BALANÇO DE ESTOQUE PDF  ← NOVO
+// ─────────────────────────────────────────────
+function gerarBalancoPDF(produtos, variantesProduto) {
+  const dataHoje = new Date().toLocaleDateString("pt-BR");
+  const horaHoje = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  let totalPecas = 0;
+  let totalCustoEstoque = 0;
+  let totalValorVenda = 0;
+
+  const linhasProdutos = produtos.map(p => {
+    const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
+    const temVars = vars.length > 0;
+    const estoqueTotal = temVars ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
+    const custoTotal = estoqueTotal * p.precoCompra;
+    const valorVendaTotal = estoqueTotal * p.precoVenda;
+    const margem = p.precoCompra > 0 ? ((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(0) : "—";
+    const baixo = estoqueTotal <= p.quantidadeMinima;
+
+    totalPecas += estoqueTotal;
+    totalCustoEstoque += custoTotal;
+    totalValorVenda += valorVendaTotal;
+
+    const varLinhas = temVars
+      ? vars.map(v => `<tr style="background:#fafafa"><td style="padding-left:32px;font-size:10px;color:#666">↳ ${v.label}</td><td></td><td style="text-align:center;font-size:11px">${v.estoque}</td><td></td><td></td><td></td><td></td></tr>`).join("")
+      : "";
+
+    return `
+      <tr style="background:${baixo ? "#fffbeb" : "#fff"}">
+        <td style="font-weight:700">${p.nome}${p.sku ? `<br><span style="font-size:10px;color:#999">SKU: ${p.sku}</span>` : ""}</td>
+        <td style="text-align:center">${temVars ? `<span style="font-size:10px;color:#666">${vars.length} var.</span>` : "—"}</td>
+        <td style="text-align:center;font-weight:700;color:${baixo ? "#d97706" : "#16a34a"}">${estoqueTotal}</td>
+        <td style="text-align:right">${formatBRL(p.precoCompra)}</td>
+        <td style="text-align:right">${formatBRL(p.precoVenda)}</td>
+        <td style="text-align:right;font-weight:600;color:#9333ea">${formatBRL(custoTotal)}</td>
+        <td style="text-align:right;font-weight:600;color:#16a34a">${formatBRL(valorVendaTotal)}</td>
+        <td style="text-align:center"><span style="background:${margem !== "—" && parseInt(margem) > 30 ? "#dcfce7" : margem !== "—" && parseInt(margem) > 10 ? "#fef9c3" : "#fee2e2"};color:${margem !== "—" && parseInt(margem) > 30 ? "#16a34a" : margem !== "—" && parseInt(margem) > 10 ? "#d97706" : "#dc2626"};padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">${margem}%</span></td>
+      </tr>
+      ${varLinhas}
+    `;
+  }).join("");
+
+  const lucroEstoque = totalValorVenda - totalCustoEstoque;
+  const margemGeral = totalCustoEstoque > 0 ? ((lucroEstoque / totalCustoEstoque) * 100).toFixed(1) : "0.0";
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Balanço de Estoque — FitMGwear</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; padding: 32px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #e8b84b; }
+  h1 { font-size: 28px; font-weight: 900; letter-spacing: 3px; color: #e8b84b; line-height: 1; }
+  .sub { font-size: 13px; color: #666; margin-top: 4px; }
+  .date { text-align: right; font-size: 11px; color: #666; }
+  .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+  .stat { padding: 16px; border-radius: 10px; border: 1px solid #e5e7eb; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 6px; font-weight: 700; }
+  .stat-value { font-size: 22px; font-weight: 900; line-height: 1; }
+  .stat-sub { font-size: 10px; color: #9ca3af; margin-top: 4px; }
+  .green { color: #16a34a; } .red { color: #dc2626; } .blue { color: #2563eb; } .gold { color: #d97706; } .purple { color: #7c3aed; }
+  h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 22px 0 10px; color: #374151; border-bottom: 2px solid #e8b84b; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 9px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: #f9fafb; border-bottom: 2px solid #e5e7eb; color: #6b7280; letter-spacing: 0.5px; }
+  td { padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 11px; vertical-align: middle; }
+  .total-row td { background: #f9fafb; font-weight: 700; border-top: 2px solid #e8b84b; font-size: 12px; }
+  .aviso { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 10px 14px; font-size: 11px; color: #92400e; margin-bottom: 16px; }
+  .footer { margin-top: 32px; font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>FITMGWEAR</h1>
+    <div class="sub">Balanço de Estoque</div>
+  </div>
+  <div class="date">Gerado em: ${dataHoje} às ${horaHoje}</div>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-label">Total de Produtos</div>
+    <div class="stat-value blue">${produtos.length}</div>
+    <div class="stat-sub">itens cadastrados</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Peças em Estoque</div>
+    <div class="stat-value green">${totalPecas}</div>
+    <div class="stat-sub">unidades disponíveis</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Custo Total Estoque</div>
+    <div class="stat-value purple">${formatBRL(totalCustoEstoque)}</div>
+    <div class="stat-sub">valor investido</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Valor de Venda Total</div>
+    <div class="stat-value green">${formatBRL(totalValorVenda)}</div>
+    <div class="stat-sub">se vender tudo</div>
+  </div>
+</div>
+
+<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+  <div class="stat">
+    <div class="stat-label">Lucro Potencial</div>
+    <div class="stat-value ${lucroEstoque >= 0 ? "green" : "red"}">${formatBRL(lucroEstoque)}</div>
+    <div class="stat-sub">venda − custo</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Margem Geral</div>
+    <div class="stat-value ${parseFloat(margemGeral) > 20 ? "green" : parseFloat(margemGeral) > 5 ? "gold" : "red"}">${margemGeral}%</div>
+    <div class="stat-sub">margem média do estoque</div>
+  </div>
+</div>
+
+<h2>📦 Produtos em Estoque (${produtos.length})</h2>
+${produtos.length === 0 ? "<p style='color:#aaa;padding:20px 0'>Nenhum produto cadastrado.</p>" : `
+<table>
+  <thead>
+    <tr>
+      <th>Produto / SKU</th>
+      <th style="text-align:center">Variantes</th>
+      <th style="text-align:center">Qtd.</th>
+      <th style="text-align:right">Pr. Compra</th>
+      <th style="text-align:right">Pr. Venda</th>
+      <th style="text-align:right">Custo Total</th>
+      <th style="text-align:right">Valor Venda</th>
+      <th style="text-align:center">Margem</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${linhasProdutos}
+    <tr class="total-row">
+      <td colspan="2">TOTAL GERAL</td>
+      <td style="text-align:center">${totalPecas} un.</td>
+      <td></td>
+      <td></td>
+      <td style="text-align:right;color:#7c3aed">${formatBRL(totalCustoEstoque)}</td>
+      <td style="text-align:right;color:#16a34a">${formatBRL(totalValorVenda)}</td>
+      <td style="text-align:center;color:${lucroEstoque >= 0 ? "#16a34a" : "#dc2626"}">${margemGeral}%</td>
+    </tr>
+  </tbody>
+</table>
+`}
+<div class="footer">FitMGwear Sistema de Gestão — Balanço gerado em ${dataHoje}</div>
+</body></html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 600);
+}
+
+// ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
 function Dashboard({ dados }) {
@@ -1171,7 +1342,7 @@ function Transacoes({ dados, onRemover }) {
 }
 
 // ─────────────────────────────────────────────
-// ESTOQUE
+// ESTOQUE  (com botão Balanço PDF)
 // ─────────────────────────────────────────────
 function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVariante, onRemoverVariante, onAtualizarVariante }) {
   const [modal, setModal] = useState(false);
@@ -1188,6 +1359,22 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   const pc = parseFloat(form.precoCompra) || 0;
   const pv = parseFloat(form.precoVenda) || 0;
   const margemForm = pc > 0 && pv > 0 ? ((pv - pc) / pc * 100) : null;
+
+  // Totais para exibição no cabeçalho
+  const totalPecas = produtos.reduce((s, p) => {
+    const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
+    return s + (vars.length > 0 ? vars.reduce((a, v) => a + (v.estoque || 0), 0) : p.quantidadeEstoque);
+  }, 0);
+  const totalCusto = produtos.reduce((s, p) => {
+    const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
+    const est = vars.length > 0 ? vars.reduce((a, v) => a + (v.estoque || 0), 0) : p.quantidadeEstoque;
+    return s + est * p.precoCompra;
+  }, 0);
+  const totalVenda = produtos.reduce((s, p) => {
+    const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
+    const est = vars.length > 0 ? vars.reduce((a, v) => a + (v.estoque || 0), 0) : p.quantidadeEstoque;
+    return s + est * p.precoVenda;
+  }, 0);
 
   function abrirModal(p = null) {
     if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "" }); }
@@ -1226,8 +1413,36 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     <div>
       <div className="page-header">
         <div><h1 className="page-title">Estoque</h1><p className="page-sub">Gerencie produtos e variantes</p></div>
-        <button className="btn btn-primary" onClick={() => abrirModal()}><Icon name="plus" /> Novo Produto</button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {/* ── BOTÃO BALANÇO PDF ── */}
+          <button className="btn btn-info" onClick={() => gerarBalancoPDF(produtos, variantesProduto)}>
+            <Icon name="balanco" />Balanço PDF
+          </button>
+          <button className="btn btn-primary" onClick={() => abrirModal()}><Icon name="plus" /> Novo Produto</button>
+        </div>
       </div>
+
+      {/* Resumo rápido do estoque */}
+      {produtos.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}>
+          <div className="stat-card blue" style={{ padding: "16px 20px" }}>
+            <div className="stat-label">Total de Peças</div>
+            <div className="stat-value" style={{ fontSize: 28 }}>{totalPecas}</div>
+            <div className="stat-sub">unidades em estoque</div>
+          </div>
+          <div className="stat-card red" style={{ padding: "16px 20px" }}>
+            <div className="stat-label">Custo do Estoque</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>{formatBRL(totalCusto)}</div>
+            <div className="stat-sub">valor investido</div>
+          </div>
+          <div className="stat-card green" style={{ padding: "16px 20px" }}>
+            <div className="stat-label">Valor de Venda</div>
+            <div className="stat-value" style={{ fontSize: 22 }}>{formatBRL(totalVenda)}</div>
+            <div className="stat-sub">potencial de receita</div>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <div className="table-wrap">
           {produtos.length === 0
@@ -1477,21 +1692,61 @@ function Categorias({ dados, onAdicionar, onRemover }) {
 }
 
 // ─────────────────────────────────────────────
-// COMPRAS
+// COMPRAS — com Carrinho de Itens  ← NOVO
 // ─────────────────────────────────────────────
 function Compras({ compras, onAdicionar, onReceber, onRemover }) {
   const [modal, setModal] = useState(false);
   const [aba, setAba] = useState("pendentes");
   const [confirmId, setConfirmId] = useState(null);
-  const [form, setForm] = useState({ fornecedor: "", valor: "", data: hojeLocal(), observacoes: "" });
 
-  function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
-  function submit(e) {
+  // Formulário principal do pedido
+  const [form, setForm] = useState({ fornecedor: "", data: hojeLocal(), observacoes: "" });
+
+  // Carrinho de itens
+  const [itens, setItens] = useState([]);
+  const [itemForm, setItemForm] = useState({ descricao: "", quantidade: "1", valorUnitario: "" });
+
+  function setF(k, v) { setForm(p => ({ ...p, [k]: v })); }
+  function setIF(k, v) { setItemForm(p => ({ ...p, [k]: v })); }
+
+  const totalCarrinho = itens.reduce((s, i) => s + i.subtotal, 0);
+
+  function adicionarItem(e) {
+    e.preventDefault();
+    if (!itemForm.descricao.trim()) return toast("Informe a descrição do item", "error");
+    if (!itemForm.valorUnitario || parseFloat(itemForm.valorUnitario) <= 0) return toast("Valor unitário inválido", "error");
+    const qtd = parseInt(itemForm.quantidade) || 1;
+    const vu = parseFloat(itemForm.valorUnitario);
+    setItens(p => [...p, { id: uid(), descricao: itemForm.descricao.trim(), quantidade: qtd, valorUnitario: vu, subtotal: qtd * vu }]);
+    setItemForm({ descricao: "", quantidade: "1", valorUnitario: "" });
+    toast("Item adicionado ao carrinho ✓");
+  }
+
+  function removerItem(id) { setItens(p => p.filter(i => i.id !== id)); }
+
+  function fecharPedido(e) {
     e.preventDefault();
     if (!form.fornecedor.trim()) return toast("Informe o fornecedor", "error");
-    if (!form.valor || parseFloat(form.valor) <= 0) return toast("Valor inválido", "error");
-    onAdicionar({ fornecedor: form.fornecedor.trim(), valor: parseFloat(form.valor), data: form.data || hojeLocal(), observacoes: form.observacoes.trim(), status: "aguardando" });
-    setForm({ fornecedor: "", valor: "", data: hojeLocal(), observacoes: "" }); setModal(false); toast("Compra registrada! ✓");
+    if (itens.length === 0) return toast("Adicione pelo menos 1 item ao carrinho", "error");
+
+    // Monta descrição dos itens para a observação
+    const itensDesc = itens.map(i => `${i.descricao} (${i.quantidade}x ${formatBRL(i.valorUnitario)})`).join("; ");
+    const obsCompleta = [form.observacoes.trim(), `Itens: ${itensDesc}`].filter(Boolean).join(" | ");
+
+    onAdicionar({
+      fornecedor: form.fornecedor.trim(),
+      valor: totalCarrinho,
+      data: form.data || hojeLocal(),
+      observacoes: obsCompleta,
+      itens: itens,
+      status: "aguardando"
+    });
+
+    setForm({ fornecedor: "", data: hojeLocal(), observacoes: "" });
+    setItens([]);
+    setItemForm({ descricao: "", quantidade: "1", valorUnitario: "" });
+    setModal(false);
+    toast("Compra registrada! ✓");
   }
 
   const pendentes = compras.filter(c => c.status === "aguardando").sort((a, b) => new Date(b.data) - new Date(a.data));
@@ -1502,7 +1757,7 @@ function Compras({ compras, onAdicionar, onReceber, onRemover }) {
     <div>
       <div className="page-header">
         <div><h1 className="page-title">Compras</h1><p className="page-sub">Pedidos de mercadoria</p></div>
-        <button className="btn btn-primary" onClick={() => setModal(true)}><Icon name="plus" />Nova Compra</button>
+        <button className="btn btn-primary" onClick={() => setModal(true)}><Icon name="cart" />Nova Compra</button>
       </div>
       {pendentes.length > 0 && (
         <div className="card" style={{ marginBottom: 20, borderColor: "rgba(167,139,250,0.25)", background: "rgba(167,139,250,0.04)" }}>
@@ -1528,7 +1783,19 @@ function Compras({ compras, onAdicionar, onReceber, onRemover }) {
                   <div className="compra-card-fornecedor">{c.fornecedor}</div>
                   <div className="compra-card-valor">{formatBRL(c.valor)}</div>
                   <div className="compra-card-meta">📅 {formatData(c.data)}</div>
-                  {c.observacoes && <div className="compra-card-obs">{c.observacoes}</div>}
+                  {/* Itens do carrinho */}
+                  {c.itens && c.itens.length > 0 && (
+                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {c.itens.map(i => (
+                        <div key={i.id} style={{ fontSize: 12, color: "var(--text2)", display: "flex", gap: 10 }}>
+                          <span style={{ color: "var(--text)" }}>• {i.descricao}</span>
+                          <span>{i.quantidade}x {formatBRL(i.valorUnitario)}</span>
+                          <span style={{ color: "var(--accent)", fontWeight: 700 }}>{formatBRL(i.subtotal)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {c.observacoes && !c.itens && <div className="compra-card-obs">{c.observacoes}</div>}
                 </div>
                 <div className="compra-card-actions">
                   <button className="btn btn-sm btn-success" onClick={() => onReceber(c.id)}><Icon name="check" size={13} />Recebido</button>
@@ -1543,35 +1810,90 @@ function Compras({ compras, onAdicionar, onReceber, onRemover }) {
         <div className="card"><div className="table-wrap">
           {historico.length === 0
             ? <div className="empty-state"><div className="empty-icon">📋</div><div className="empty-text">Nenhum recebimento</div></div>
-            : <table><thead><tr><th>Pedido em</th><th>Fornecedor</th><th>Recebido em</th><th style={{ textAlign: "right" }}>Valor</th><th>Obs.</th><th></th></tr></thead>
+            : <table><thead><tr><th>Pedido em</th><th>Fornecedor</th><th>Itens</th><th>Recebido em</th><th style={{ textAlign: "right" }}>Valor</th><th></th></tr></thead>
               <tbody>{historico.map(c => (
                 <tr key={c.id}>
                   <td style={{ color: "var(--text2)", whiteSpace: "nowrap" }}>{formatData(c.data)}</td>
                   <td style={{ fontWeight: 600 }}>{c.fornecedor}</td>
+                  <td style={{ fontSize: 11, color: "var(--text2)" }}>
+                    {c.itens && c.itens.length > 0
+                      ? c.itens.map(i => `${i.descricao} (${i.quantidade}x)`).join(", ")
+                      : c.observacoes || "—"}
+                  </td>
                   <td><span className="badge badge-green">✓ {formatData(c.dataRecebimento)}</span></td>
                   <td style={{ fontWeight: 700, color: "var(--accent)", textAlign: "right" }}>{formatBRL(c.valor)}</td>
-                  <td style={{ color: "var(--text2)", fontSize: 12 }}>{c.observacoes || "—"}</td>
                   <td><button className="btn-icon danger" onClick={() => setConfirmId(c.id)}><Icon name="trash" /></button></td>
                 </tr>
               ))}</tbody></table>
           }
         </div></div>
       )}
-      <Modal open={modal} onClose={() => { setModal(false); setForm({ fornecedor: "", valor: "", data: hojeLocal(), observacoes: "" }); }} title="Nova Compra">
-        <form onSubmit={submit}>
-          <div className="form-grid" style={{ gap: 14 }}>
-            <div className="input-group"><label className="input-label">Fornecedor *</label><input className="input" placeholder="Ex: Fornecedor SP" value={form.fornecedor} onChange={e => set("fornecedor", e.target.value)} /></div>
-            <div className="input-group"><label className="input-label">Valor (R$) *</label><input className="input" type="number" step="0.01" min="0" value={form.valor} onChange={e => set("valor", e.target.value)} /></div>
-            <div className="input-group"><label className="input-label">Data do Pedido</label><input className="input" type="date" value={form.data} onChange={e => set("data", e.target.value)} /></div>
-            <div className="input-group"><label className="input-label">Observações</label><textarea className="input" value={form.observacoes} onChange={e => set("observacoes", e.target.value)} style={{ minHeight: 70 }} /></div>
+
+      {/* MODAL — Nova Compra com Carrinho */}
+      <Modal open={modal} onClose={() => { setModal(false); setItens([]); setForm({ fornecedor: "", data: hojeLocal(), observacoes: "" }); setItemForm({ descricao: "", quantidade: "1", valorUnitario: "" }); }} title="Nova Compra" wide>
+        <div>
+          {/* Dados do pedido */}
+          <div className="form-grid form-grid-2" style={{ marginBottom: 20 }}>
+            <div className="input-group"><label className="input-label">Fornecedor *</label><input className="input" placeholder="Ex: Fornecedor SP" value={form.fornecedor} onChange={e => setF("fornecedor", e.target.value)} /></div>
+            <div className="input-group"><label className="input-label">Data do Pedido</label><input className="input" type="date" value={form.data} onChange={e => setF("data", e.target.value)} /></div>
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Observações gerais</label><textarea className="input" value={form.observacoes} onChange={e => setF("observacoes", e.target.value)} style={{ minHeight: 60 }} /></div>
           </div>
-          <div className="warn-box" style={{ marginTop: 14 }}>🛒 Esta compra não afeta o saldo nem o estoque automaticamente.</div>
+
+          {/* CARRINHO DE ITENS */}
+          <div className="cart-section">
+            <div className="cart-section-title">🛒 Itens do Pedido</div>
+
+            {/* Adicionar item */}
+            <form onSubmit={adicionarItem}>
+              <div className="cart-add-row">
+                <div className="input-group">
+                  <label className="input-label">Descrição do Item *</label>
+                  <input className="input" placeholder="Ex: Camiseta Dry-Fit P/Preta" value={itemForm.descricao} onChange={e => setIF("descricao", e.target.value)} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Qtd.</label>
+                  <input className="input" type="number" min="1" value={itemForm.quantidade} onChange={e => setIF("quantidade", e.target.value)} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Valor Unit. (R$)</label>
+                  <input className="input" type="number" step="0.01" min="0" placeholder="0,00" value={itemForm.valorUnitario} onChange={e => setIF("valorUnitario", e.target.value)} />
+                </div>
+                <button type="submit" className="btn btn-info" style={{ alignSelf: "flex-end" }}>
+                  <Icon name="plus" />Adicionar
+                </button>
+              </div>
+            </form>
+
+            {/* Lista de itens */}
+            {itens.length === 0
+              ? <div className="cart-empty">Nenhum item adicionado ainda. Preencha os campos acima e clique em <strong>Adicionar</strong>.</div>
+              : <>
+                {itens.map(i => (
+                  <div key={i.id} className="cart-item-row">
+                    <span className="cart-item-name">{i.descricao}</span>
+                    <span className="cart-item-qty">{i.quantidade}x {formatBRL(i.valorUnitario)}</span>
+                    <span className="cart-item-price">{formatBRL(i.subtotal)}</span>
+                    <button className="btn-icon danger" onClick={() => removerItem(i.id)}><Icon name="trash" /></button>
+                  </div>
+                ))}
+                <div className="cart-total-row">
+                  <span className="cart-total-label">Total do Pedido ({itens.length} {itens.length === 1 ? "item" : "itens"})</span>
+                  <span className="cart-total-value">{formatBRL(totalCarrinho)}</span>
+                </div>
+              </>
+            }
+          </div>
+
+          <div className="warn-box" style={{ marginBottom: 14 }}>🛒 Esta compra não afeta o saldo nem o estoque automaticamente.</div>
           <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
-            <button type="submit" className="btn btn-primary"><Icon name="check" />Registrar Compra</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setModal(false); setItens([]); }}>Cancelar</button>
+            <button className="btn btn-primary" onClick={fecharPedido} disabled={itens.length === 0 || !form.fornecedor.trim()}>
+              <Icon name="check" />Registrar Compra {itens.length > 0 && `— ${formatBRL(totalCarrinho)}`}
+            </button>
           </div>
-        </form>
+        </div>
       </Modal>
+
       <ConfirmDialog open={!!confirmId} title="Remover Compra?" text="A compra será removida." danger onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Removida"); }} onCancel={() => setConfirmId(null)} />
     </div>
   );
