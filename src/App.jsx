@@ -2638,10 +2638,12 @@ function Encomendas({ encomendas, onAdicionar, onAtualizar, onRemover }) {
 // ─────────────────────────────────────────────
 // FIADO / COBRANÇAS
 // ─────────────────────────────────────────────
-function Fiado({ fiados, onAdicionar, onPagar, onRemover, dados }) {
+function Fiado({ fiados, onAdicionar, onPagar, onPagarParcial, onRemover, dados }) {
   const [modal, setModal] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
   const [aba, setAba] = useState("pendentes");
+  const [modalParcial, setModalParcial] = useState(null);
+  const [valorParcial, setValorParcial] = useState("");
 
   // Dados do fiado (cliente, data, pagamento, obs)
   const [meta, setMeta] = useState({ nome: "", telefone: "", data: hojeLocal(), formaPagamento: "pix", observacoes: "" });
@@ -2760,10 +2762,28 @@ function Fiado({ fiados, onAdicionar, onPagar, onRemover, dados }) {
                       ))}
                     </div>
                   )}
+                  {/* Histórico de pagamentos parciais */}
+                  {f.historicoPagamentos && f.historicoPagamentos.length > 0 && (
+                    <div style={{ marginTop: 6, borderLeft: "2px solid rgba(232,184,75,0.3)", paddingLeft: 8 }}>
+                      <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 3, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Parcelas recebidas:</div>
+                      {f.historicoPagamentos.map((p, i) => (
+                        <div key={i} style={{ fontSize: 12, color: "var(--text2)", display: "flex", gap: 8 }}>
+                          <span style={{ color: "var(--green)", fontWeight: 700 }}>{formatBRL(p.valor)}</span>
+                          <span>em {formatData(p.data)}</span>
+                        </div>
+                      ))}
+                      {f.totalPago > 0 && (
+                        <div style={{ fontSize: 12, marginTop: 4, color: "var(--accent)", fontWeight: 700 }}>
+                          Total já pago: {formatBRL(f.totalPago)}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {f.observacoes && <div className="compra-card-obs">{f.observacoes}</div>}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                   <button className="btn btn-sm btn-success" onClick={() => onPagar(f.id)}><Icon name="check" size={13} />Recebido</button>
+                  <button className="btn btn-sm btn-info" onClick={() => { setModalParcial(f); setValorParcial(""); }}>💰 Parcial</button>
                   {f.telefone && <button className="btn btn-sm btn-whatsapp" onClick={() => gerarWhatsApp(f)}>📲 Cobrar</button>}
                   <button className="btn-icon danger" onClick={() => setConfirmId(f.id)}><Icon name="trash" /></button>
                 </div>
@@ -2781,7 +2801,7 @@ function Fiado({ fiados, onAdicionar, onPagar, onRemover, dados }) {
               <tbody>{pagos.map(f => (
                 <tr key={f.id}>
                   <td style={{ fontWeight: 600 }}>{f.nome}<div style={{ fontSize: 11, color: "var(--text2)" }}>{f.telefone}</div></td>
-                  <td style={{ fontWeight: 700, color: "var(--green)" }}>{formatBRL(f.valor)}</td>
+                  <td style={{ fontWeight: 700, color: "var(--green)" }}>{formatBRL(f.totalPago || f.valor)}</td>
                   <td><span className="badge badge-blue">{FORMA_EMOJI[f.formaPagamento]} {FORMA_LABEL[f.formaPagamento]}</span></td>
                   <td><span className="badge badge-green">✓ {formatData(f.dataPagamento)}</span></td>
                   <td style={{ color: "var(--text2)", fontSize: 12 }}>{f.observacoes || "—"}</td>
@@ -2850,6 +2870,61 @@ function Fiado({ fiados, onAdicionar, onPagar, onRemover, dados }) {
       <ConfirmDialog open={!!confirmId} title="Remover registro?" text="Permanentemente." danger
         onConfirm={() => { onRemover(confirmId); setConfirmId(null); toast("Removido"); }}
         onCancel={() => setConfirmId(null)} />
+
+      {/* MODAL — Pagamento Parcial */}
+      <Modal open={!!modalParcial} onClose={() => setModalParcial(null)} title={`💰 Receber Parcial — ${modalParcial?.nome || ""}`}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 4 }}>Valor total em aberto:</div>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "var(--red)" }}>
+            {formatBRL(modalParcial?.valor || 0)}
+          </div>
+          {modalParcial?.totalPago > 0 && (
+            <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 4 }}>
+              Já recebido anteriormente: <strong style={{ color: "var(--green)" }}>{formatBRL(modalParcial.totalPago)}</strong>
+            </div>
+          )}
+        </div>
+        <div className="input-group" style={{ marginBottom: 16 }}>
+          <label className="input-label">Valor recebido agora (R$) *</label>
+          <input
+            className="input"
+            type="number"
+            step="0.01"
+            min="0.01"
+            max={modalParcial?.valor}
+            placeholder="0,00"
+            value={valorParcial}
+            onChange={e => setValorParcial(e.target.value)}
+            autoFocus
+          />
+          {valorParcial && parseFloat(valorParcial) > 0 && parseFloat(valorParcial) < (modalParcial?.valor || 0) && (
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "rgba(77,166,255,0.07)", border: "1px solid rgba(77,166,255,0.2)", fontSize: 13 }}>
+              Restará: <strong style={{ color: "var(--red)" }}>{formatBRL((modalParcial?.valor || 0) - parseFloat(valorParcial))}</strong>
+            </div>
+          )}
+          {valorParcial && parseFloat(valorParcial) >= (modalParcial?.valor || 0) && (
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "rgba(62,207,142,0.07)", border: "1px solid rgba(62,207,142,0.2)", fontSize: 13, color: "var(--green)", fontWeight: 700 }}>
+              ✓ Fiado será quitado completamente!
+            </div>
+          )}
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-secondary" onClick={() => setModalParcial(null)}>Cancelar</button>
+          <button
+            className="btn btn-success"
+            disabled={!valorParcial || parseFloat(valorParcial) <= 0}
+            onClick={() => {
+              const v = parseFloat(valorParcial);
+              if (!v || v <= 0) return toast("Informe um valor válido", "error");
+              onPagarParcial(modalParcial.id, v);
+              setModalParcial(null);
+              setValorParcial("");
+            }}
+          >
+            <Icon name="check" />Confirmar Recebimento
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -3043,6 +3118,40 @@ export default function App() {
   }
   async function removerFiado(id) { await deleteDoc(doc(db, "fiados", id)); }
 
+  async function pagarParcialFiado(id, valorPago) {
+    const f = fiados.find(x => x.id === id);
+    if (!f) return;
+    const valorRestante = Math.max(0, f.valor - valorPago);
+    const totalJaPago = (f.totalPago || 0) + valorPago;
+
+    // Atualiza o fiado — abate o valor, registra histórico de parcelas
+    const historico = f.historicoPagamentos || [];
+    historico.push({ valor: valorPago, data: hojeLocal() });
+
+    if (valorRestante <= 0) {
+      // Quitou tudo — marca como pago
+      await setDoc(doc(db, "fiados", id), { ...f, status: "pago", valor: 0, totalPago: totalJaPago, historicoPagamentos: historico, dataPagamento: hojeLocal() });
+    } else {
+      // Ainda tem saldo — atualiza valor restante
+      await setDoc(doc(db, "fiados", id), { ...f, valor: valorRestante, totalPago: totalJaPago, historicoPagamentos: historico });
+    }
+
+    // Registra a parcela como transação no faturamento
+    const tId = uid();
+    const descricao = `Fiado parcial recebido — ${f.nome} (${valorRestante > 0 ? `resta ${formatBRL(valorRestante)}` : "quitado"})`;
+    await setDoc(doc(db, "transacoes", tId), {
+      id: tId, tipo: "venda", descricao, valor: valorPago,
+      cliente: f.nome, data: hojeLocal(), observacoes: f.observacoes || "",
+      quantidade: 1, fiadoId: id,
+    });
+
+    if (valorRestante <= 0) {
+      toast("Fiado quitado! Valor adicionado ao faturamento ✓");
+    } else {
+      toast(`Parcial de ${formatBRL(valorPago)} recebido! Resta ${formatBRL(valorRestante)} ✓`);
+    }
+  }
+
   // Venda com carrinho (múltiplos itens)
   async function adicionarVendaCarrinho(payload) {
     const { itens, descricao, valor, cliente, categoria, data, observacoes } = payload;
@@ -3135,7 +3244,7 @@ export default function App() {
     if (page === "relatorio") return <RelatorioPDF dados={dados} />;
     if (page === "compras") return <Compras compras={compras} onAdicionar={adicionarCompra} onReceber={receberCompra} onRemover={removerCompra} />;
     if (page === "encomendas") return <Encomendas encomendas={encomendas} onAdicionar={adicionarEncomenda} onAtualizar={atualizarEncomenda} onRemover={removerEncomenda} />;
-    if (page === "fiado") return <Fiado fiados={fiados} onAdicionar={adicionarFiado} onPagar={pagarFiado} onRemover={removerFiado} dados={dados} />;
+    if (page === "fiado") return <Fiado fiados={fiados} onAdicionar={adicionarFiado} onPagar={pagarFiado} onPagarParcial={pagarParcialFiado} onRemover={removerFiado} dados={dados} />;
     if (page === "usuarios" && isDono) return <GerenciarUsuarios usuarioAtual={usuario} />;
   }
 
