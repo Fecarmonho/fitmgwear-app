@@ -132,7 +132,7 @@ const CSS = `
   .stat-card.blue  { border-color: rgba(77,166,255,0.2); }
   .stat-card.gold  { border-color: rgba(232,184,75,0.2); }
   .stat-label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 14px; font-weight: 700; }
-  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 1px; line-height: 1; min-width: 0; word-break: break-word; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 1px; line-height: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .stat-card.green .stat-value { color: var(--green); }
   .stat-card.red .stat-value   { color: var(--red); }
   .stat-card.blue .stat-value  { color: var(--blue); }
@@ -322,13 +322,14 @@ const CSS = `
     .sidebar-overlay { display:block; }
     .mobile-navbar { display: flex; }
     .page { padding:20px 16px; padding-top:80px; }
-    .stats-grid { grid-template-columns:1fr 1fr; }
+    .stats-grid { grid-template-columns: 1fr; }
     .stats-grid-3 { grid-template-columns: 1fr; }
     .form-grid-2, .form-grid-3 { grid-template-columns:1fr; }
     .cart-add-row { grid-template-columns: 1fr 1fr; }
+    .stat-value { font-size: 42px; }
   }
   @media (max-width: 420px) {
-    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .stat-value { font-size: 36px; }
   }
 `;
 
