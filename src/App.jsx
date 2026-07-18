@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import logoImg from "./logo.png";
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs } from "firebase/firestore";
+import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs, getDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB2t0DPn-t_-bYuEJKd3X0h8j6v6bSTuAg",
@@ -18,6 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -1876,9 +1878,27 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   const [editando, setEditando] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
   const [expandidos, setExpandidos] = useState({});
-  const [form, setForm] = useState({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "" });
+  const [form, setForm] = useState({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" });
   const [novaVariante, setNovaVariante] = useState({ label: "", estoque: "" });
   const [editandoVariante, setEditandoVariante] = useState(null);
+  const [arquivoImagem, setArquivoImagem] = useState(null);
+  const [previewImagem, setPreviewImagem] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  function handleImagemChange(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast("Selecione um arquivo de imagem", "error");
+    if (file.size > 5 * 1024 * 1024) return toast("Imagem muito grande (máx. 5MB)", "error");
+    setArquivoImagem(file);
+    setPreviewImagem(URL.createObjectURL(file));
+  }
+
+  function removerImagemSelecionada() {
+    setArquivoImagem(null);
+    setPreviewImagem("");
+    setForm(p => ({ ...p, imagemUrl: "" }));
+  }
 
   const produtos = dados.produtos || [];
   const variantesProduto = dados.variantesProduto || [];
@@ -1903,22 +1923,37 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   }, 0);
 
   function abrirModal(p = null) {
-    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "" }); }
-    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "" }); }
+    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "", imagemUrl: p.imagemUrl || "" }); setPreviewImagem(p.imagemUrl || ""); }
+    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" }); setPreviewImagem(""); }
+    setArquivoImagem(null);
     setModal(true);
   }
 
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
   function toggleExpand(id) { setExpandidos(p => ({ ...p, [id]: !p[id] })); }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!form.nome.trim()) return toast("Preencha o nome", "error");
     if (!form.precoVenda || parseFloat(form.precoVenda) <= 0) return toast("Preço de venda inválido", "error");
-    const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku };
-    if (editando) { onAtualizar(editando, d); toast("Produto atualizado"); }
-    else { onAdicionar(d); toast("Produto adicionado"); }
-    setModal(false);
+    setSalvando(true);
+    try {
+      let imagemUrl = form.imagemUrl || "";
+      if (arquivoImagem) {
+        const caminho = `produtos/${uid()}_${arquivoImagem.name}`;
+        const imgRef = storageRef(storage, caminho);
+        await uploadBytes(imgRef, arquivoImagem);
+        imagemUrl = await getDownloadURL(imgRef);
+      }
+      const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl };
+      if (editando) { await onAtualizar(editando, d); toast("Produto atualizado"); }
+      else { await onAdicionar(d); toast("Produto adicionado"); }
+      setModal(false);
+    } catch (err) {
+      toast("Erro ao salvar imagem: " + (err.message || ""), "error");
+    } finally {
+      setSalvando(false);
+    }
   }
 
   async function salvarVariante(e) {
@@ -1985,7 +2020,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                   const expandido = expandidos[p.id];
                   return [
                     <tr key={p.id} className="produto-pai-row">
-                      <td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="product-thumb">👕</div><div><div style={{ fontWeight: 700 }}>{p.nome}</div>{p.descricao && <div style={{ fontSize: 11, color: "var(--text2)" }}>{p.descricao}</div>}</div></div></td>
+                      <td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="product-thumb" style={p.imagemUrl ? { padding: 0, overflow: "hidden" } : undefined}>{p.imagemUrl ? <img src={p.imagemUrl} alt={p.nome} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👕"}</div><div><div style={{ fontWeight: 700 }}>{p.nome}</div>{p.descricao && <div style={{ fontSize: 11, color: "var(--text2)" }}>{p.descricao}</div>}</div></div></td>
                       <td style={{ color: "var(--text2)", fontSize: 12 }}>{p.sku || "—"}</td>
                       <td>{formatBRL(p.precoCompra)}</td>
                       <td style={{ fontWeight: 700 }}>{formatBRL(p.precoVenda)}</td>
@@ -2028,6 +2063,20 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
       <Modal open={modal} onClose={() => setModal(false)} title={editando ? "Editar Produto" : "Novo Produto"} wide>
         <form onSubmit={submit}>
           <div className="form-grid form-grid-2">
+            <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+              <label className="input-label">Foto do Produto</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {previewImagem && (
+                  <div style={{ width: 64, height: 64, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border2)", flexShrink: 0, background: "var(--surface2)" }}>
+                    <img src={previewImagem} alt="Prévia" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <input type="file" accept="image/*" onChange={handleImagemChange} />
+                  {previewImagem && <button type="button" className="btn btn-sm btn-secondary" style={{ alignSelf: "flex-start" }} onClick={removerImagemSelecionada}>Remover foto</button>}
+                </div>
+              </div>
+            </div>
             <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Nome *</label><input className="input" value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">SKU</label><input className="input" value={form.sku} onChange={e => set("sku", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">Descrição</label><input className="input" value={form.descricao} onChange={e => set("descricao", e.target.value)} /></div>
@@ -2050,7 +2099,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
           </div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
-            <button type="submit" className="btn btn-primary">{editando ? "Salvar" : "Adicionar"}</button>
+            <button type="submit" className="btn btn-primary" disabled={salvando}>{salvando ? "Salvando..." : (editando ? "Salvar" : "Adicionar")}</button>
           </div>
         </form>
       </Modal>
@@ -3026,21 +3075,35 @@ export default function App() {
   const [primeiroAcesso, setPrimeiroAcesso] = useState(false);
 
   useEffect(() => {
+    let unsubPerfil = null;
     const unsub = onAuthStateChanged(auth, async (u) => {
+      if (unsubPerfil) { unsubPerfil(); unsubPerfil = null; }
       setUsuario(u);
       if (u) {
-        const snap = await getDocs(collection(db, "usuarios"));
-        const perfis = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const p = perfis.find(x => x.uid === u.uid);
-        setPerfil(p || { cargo: "funcionario", nome: u.email });
-        setPrimeiroAcesso(false);
+        // Escuta o perfil do próprio usuário em tempo real. Se o perfil for
+        // removido (ex: em "Usuários" > Remover), o acesso é revogado na hora,
+        // mesmo que a pessoa já esteja com o sistema aberto.
+        unsubPerfil = onSnapshot(
+          doc(db, "usuarios", u.uid),
+          (snap) => {
+            if (!snap.exists()) {
+              setPerfil(null);
+              signOut(auth);
+              return;
+            }
+            setPerfil({ id: snap.id, ...snap.data() });
+            setPrimeiroAcesso(false);
+            setAuthLoading(false);
+          },
+          () => setAuthLoading(false)
+        );
       } else {
         setPerfil(null);
         try { const snap = await getDocs(collection(db, "usuarios")); setPrimeiroAcesso(snap.empty); } catch { setPrimeiroAcesso(false); }
+        setAuthLoading(false);
       }
-      setAuthLoading(false);
     });
-    return unsub;
+    return () => { unsub(); if (unsubPerfil) unsubPerfil(); };
   }, []);
 
   const isDono = perfil?.cargo === "dono";
@@ -3208,6 +3271,8 @@ export default function App() {
   // Produtos
   async function adicionarProduto(p) { const id = uid(); await setDoc(doc(db, "produtos", id), { ...p, id, dataCriacao: new Date().toISOString() }); }
   async function removerProduto(id) {
+    const p = produtos.find(x => x.id === id);
+    if (p?.imagemUrl) { try { await deleteObject(storageRef(storage, p.imagemUrl)); } catch { /* imagem já pode não existir */ } }
     await deleteDoc(doc(db, "produtos", id));
     const vars = variantesProduto.filter(v => v.produtoPaiId === id);
     for (const v of vars) await deleteDoc(doc(db, "variantesProduto", v.id));
