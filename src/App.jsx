@@ -4,7 +4,6 @@ import logoImg from "./logo.png";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs, getDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB2t0DPn-t_-bYuEJKd3X0h8j6v6bSTuAg",
@@ -19,10 +18,36 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app);
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function lerImagemComoBase64(file, maxLado = 480, qualidade = 0.75) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve("");
+    if (!file.type || !file.type.startsWith("image/")) return reject(new Error("Arquivo não é uma imagem"));
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxLado || height > maxLado) {
+          if (width > height) { height = Math.round(height * (maxLado / width)); width = maxLado; }
+          else { width = Math.round(width * (maxLado / height)); height = maxLado; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", qualidade));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function formatBRL(v) {
@@ -1881,22 +1906,26 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   const [form, setForm] = useState({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" });
   const [novaVariante, setNovaVariante] = useState({ label: "", estoque: "" });
   const [editandoVariante, setEditandoVariante] = useState(null);
-  const [arquivoImagem, setArquivoImagem] = useState(null);
-  const [previewImagem, setPreviewImagem] = useState("");
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  function handleImagemChange(e) {
+  async function handleImagemChange(e) {
     const file = e.target.files && e.target.files[0];
+    e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) return toast("Selecione um arquivo de imagem", "error");
-    if (file.size > 5 * 1024 * 1024) return toast("Imagem muito grande (máx. 5MB)", "error");
-    setArquivoImagem(file);
-    setPreviewImagem(URL.createObjectURL(file));
+    setEnviandoImagem(true);
+    try {
+      const base64 = await lerImagemComoBase64(file);
+      set("imagemUrl", base64);
+    } catch {
+      toast("Não foi possível carregar essa imagem", "error");
+    } finally {
+      setEnviandoImagem(false);
+    }
   }
 
   function removerImagemSelecionada() {
-    setArquivoImagem(null);
-    setPreviewImagem("");
     setForm(p => ({ ...p, imagemUrl: "" }));
   }
 
@@ -1923,9 +1952,8 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   }, 0);
 
   function abrirModal(p = null) {
-    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "", imagemUrl: p.imagemUrl || "" }); setPreviewImagem(p.imagemUrl || ""); }
-    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" }); setPreviewImagem(""); }
-    setArquivoImagem(null);
+    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "", imagemUrl: p.imagemUrl || "" }); }
+    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" }); }
     setModal(true);
   }
 
@@ -1938,19 +1966,12 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     if (!form.precoVenda || parseFloat(form.precoVenda) <= 0) return toast("Preço de venda inválido", "error");
     setSalvando(true);
     try {
-      let imagemUrl = form.imagemUrl || "";
-      if (arquivoImagem) {
-        const caminho = `produtos/${uid()}_${arquivoImagem.name}`;
-        const imgRef = storageRef(storage, caminho);
-        await uploadBytes(imgRef, arquivoImagem);
-        imagemUrl = await getDownloadURL(imgRef);
-      }
-      const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl };
+      const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl: form.imagemUrl || "" };
       if (editando) { await onAtualizar(editando, d); toast("Produto atualizado"); }
       else { await onAdicionar(d); toast("Produto adicionado"); }
       setModal(false);
     } catch (err) {
-      toast("Erro ao salvar imagem: " + (err.message || ""), "error");
+      toast("Erro ao salvar produto: " + (err.message || ""), "error");
     } finally {
       setSalvando(false);
     }
@@ -2066,14 +2087,12 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
             <div className="input-group" style={{ gridColumn: "1 / -1" }}>
               <label className="input-label">Foto do Produto</label>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                {previewImagem && (
-                  <div style={{ width: 64, height: 64, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border2)", flexShrink: 0, background: "var(--surface2)" }}>
-                    <img src={previewImagem} alt="Prévia" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  </div>
-                )}
+                <div style={{ width: 64, height: 64, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border2)", flexShrink: 0, background: "var(--surface2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {enviandoImagem ? <div className="spinner" style={{ width: 18, height: 18 }} /> : form.imagemUrl ? <img src={form.imagemUrl} alt="Prévia" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👕"}
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <input type="file" accept="image/*" onChange={handleImagemChange} />
-                  {previewImagem && <button type="button" className="btn btn-sm btn-secondary" style={{ alignSelf: "flex-start" }} onClick={removerImagemSelecionada}>Remover foto</button>}
+                  {form.imagemUrl && <button type="button" className="btn btn-sm btn-secondary" style={{ alignSelf: "flex-start" }} onClick={removerImagemSelecionada}>Remover foto</button>}
                 </div>
               </div>
             </div>
@@ -3271,8 +3290,6 @@ export default function App() {
   // Produtos
   async function adicionarProduto(p) { const id = uid(); await setDoc(doc(db, "produtos", id), { ...p, id, dataCriacao: new Date().toISOString() }); }
   async function removerProduto(id) {
-    const p = produtos.find(x => x.id === id);
-    if (p?.imagemUrl) { try { await deleteObject(storageRef(storage, p.imagemUrl)); } catch { /* imagem já pode não existir */ } }
     await deleteDoc(doc(db, "produtos", id));
     const vars = variantesProduto.filter(v => v.produtoPaiId === id);
     for (const v of vars) await deleteDoc(doc(db, "variantesProduto", v.id));
