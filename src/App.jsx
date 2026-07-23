@@ -69,6 +69,41 @@ function hojeLocal() {
 }
 
 // ─────────────────────────────────────────────
+// ORDENAÇÃO DE VARIANTES (Tamanho/Cor)
+// ─────────────────────────────────────────────
+const ORDEM_TAMANHOS = ["PP", "P", "M", "G", "GG", "GG1", "GG2", "GG3", "XG", "XGG", "EG", "EGG", "EXG", "EXGG", "U", "UNICO", "ÚNICO"];
+
+function tamanhoRank(tam) {
+  const t = (tam || "").trim().toUpperCase();
+  const idx = ORDEM_TAMANHOS.indexOf(t);
+  if (idx !== -1) return idx;
+  if (/^\d+$/.test(t)) return 1000 + parseInt(t, 10); // numeração (ex: 36, 38, 40...)
+  return 2000; // tamanhos não reconhecidos vão por último
+}
+
+function compararTamanhos(a, b) {
+  const ra = tamanhoRank(a), rb = tamanhoRank(b);
+  if (ra !== rb) return ra - rb;
+  return (a || "").localeCompare(b || "", "pt-BR", { sensitivity: "base" });
+}
+
+function partesVariante(label) {
+  const partes = (label || "").split("/").map(s => s.trim());
+  const [tam, ...corParts] = partes;
+  return { tam: tam || "", cor: corParts.join("/") };
+}
+
+function ordenarVariantes(vars) {
+  return [...vars].sort((a, b) => {
+    const pa = partesVariante(a.label);
+    const pb = partesVariante(b.label);
+    const cmpTam = compararTamanhos(pa.tam, pb.tam);
+    if (cmpTam !== 0) return cmpTam;
+    return pa.cor.localeCompare(pb.cor, "pt-BR", { sensitivity: "base" });
+  });
+}
+
+// ─────────────────────────────────────────────
 // CSS
 // ─────────────────────────────────────────────
 const CSS = `
@@ -1191,7 +1226,7 @@ function gerarBalancoPDF(produtos, variantesProduto) {
   let totalValorVenda = 0;
 
   const linhasProdutos = produtos.map(p => {
-    const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
+    const vars = ordenarVariantes(variantesProduto.filter(v => v.produtoPaiId === p.id));
     const temVars = vars.length > 0;
     const estoqueTotal = temVars ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
     const custoTotal = estoqueTotal * p.precoCompra;
@@ -1533,7 +1568,10 @@ function SeletorItemVenda({ dados, onAdicionarItem, estoqueReservado }) {
         tamSet.add(v.label); coresMap[v.label] = [{ cor: "", variante: v }];
       }
     });
-    return { tamanhos: [...tamSet], coresParaTam: coresMap };
+    Object.keys(coresMap).forEach(tam => {
+      coresMap[tam].sort((a, b) => a.cor.localeCompare(b.cor, "pt-BR", { sensitivity: "base" }));
+    });
+    return { tamanhos: [...tamSet].sort(compararTamanhos), coresParaTam: coresMap };
   }, [variantesDisp, temVariantes]);
 
   const varianteSel = useMemo(() => {
@@ -2033,7 +2071,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
               <thead><tr><th>Produto</th><th>SKU</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Margem</th><th></th></tr></thead>
               <tbody>
                 {produtos.map(p => {
-                  const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
+                  const vars = ordenarVariantes(variantesProduto.filter(v => v.produtoPaiId === p.id));
                   const temVars = vars.length > 0;
                   const estoqueTotal = temVars ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
                   const baixo = estoqueTotal <= p.quantidadeMinima;
@@ -2140,7 +2178,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
 
       <Modal open={!!modalVariantes} onClose={() => setModalVariantes(null)} title={`Variantes — ${modalVariantes?.nome || ""}`} wide>
         {modalVariantes && (() => {
-          const vars = variantesProduto.filter(v => v.produtoPaiId === modalVariantes.id);
+          const vars = ordenarVariantes(variantesProduto.filter(v => v.produtoPaiId === modalVariantes.id));
           return (
             <div>
               <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>Cada variante é uma combinação livre, ex: <strong style={{ color: "var(--text)" }}>P/Preto</strong>, <strong style={{ color: "var(--text)" }}>G/Azul</strong>.</div>
