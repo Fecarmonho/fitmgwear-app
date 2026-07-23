@@ -97,9 +97,9 @@ function ordenarVariantes(vars) {
   return [...vars].sort((a, b) => {
     const pa = partesVariante(a.label);
     const pb = partesVariante(b.label);
-    const cmpTam = compararTamanhos(pa.tam, pb.tam);
-    if (cmpTam !== 0) return cmpTam;
-    return pa.cor.localeCompare(pb.cor, "pt-BR", { sensitivity: "base" });
+    const cmpCor = pa.cor.localeCompare(pb.cor, "pt-BR", { sensitivity: "base" });
+    if (cmpCor !== 0) return cmpCor;
+    return compararTamanhos(pa.tam, pb.tam);
   });
 }
 
