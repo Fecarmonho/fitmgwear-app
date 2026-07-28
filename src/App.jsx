@@ -518,8 +518,8 @@ function ConfirmDialog({ open, title, text, onConfirm, onCancel, danger }) {
 function SplashScreen() {
   return (
     <div className="splash">
-      {/* logo-512 em vez do logo.png (142px) — não borra ao aparecer grande */}
-      <img src="/logo-512.png" alt="FIT MG WEAR" className="splash-logo" onError={e => { e.currentTarget.src = logoImg; }} />
+      {/* logo-splash: fundo transparente e 512px — o logo-512.png do PWA tem fundo preto */}
+      <img src="/logo-splash.png" alt="FIT MG WEAR" className="splash-logo" onError={e => { e.currentTarget.src = logoImg; }} />
       <div className="splash-nome">FITMGWEAR <span>OFICIAL</span></div>
       <div className="splash-spinner" />
     </div>
