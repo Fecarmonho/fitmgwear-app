@@ -3038,6 +3038,142 @@ function Fiado({ fiados, onAdicionar, onPagar, onPagarParcial, onRemover, dados 
 // ─────────────────────────────────────────────
 // SIDEBAR
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// FOTOS DO SITE (carrossel, galeria e foto da dona)
+// ─────────────────────────────────────────────
+const SLIDES_CARROSSEL = [
+  { ordem: 1, titulo: "Vista sua força" },
+  { ordem: 2, titulo: "Design que encanta" },
+  { ordem: 3, titulo: "Feito para treinar" },
+  { ordem: 4, titulo: "Beleza e poder" },
+  { ordem: 5, titulo: "Entrega todo Brasil" },
+];
+
+function FotosSite() {
+  const [fotos, loadingFotos] = useCollection("siteFotos");
+  const [enviando, setEnviando] = useState("");
+  const [confirmRemover, setConfirmRemover] = useState(null);
+
+  const carrossel = fotos.filter(f => f.tipo === "carrossel");
+  const galeria = [...fotos.filter(f => f.tipo === "galeria")].sort((a, b) => (a.criadoEm || "").localeCompare(b.criadoEm || ""));
+  const fotoDona = fotos.find(f => f.tipo === "dona");
+
+  async function enviarFoto(tipo, ordem, file, chave) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast("Selecione um arquivo de imagem", "error");
+    setEnviando(chave);
+    try {
+      // Carrossel aparece em tela cheia no site — precisa de mais resolução
+      const maxLado = tipo === "carrossel" ? 1280 : 800;
+      const imagem = await lerImagemComoBase64(file, maxLado, 0.8);
+      const existente = tipo === "carrossel" ? carrossel.find(f => f.ordem === ordem) : tipo === "dona" ? fotoDona : null;
+      const id = existente ? existente.id : uid();
+      await setDoc(doc(db, "siteFotos", id), { id, tipo, ordem: ordem || 0, imagem, criadoEm: existente?.criadoEm || new Date().toISOString() });
+      toast("Foto do site atualizada ✓");
+    } catch (err) {
+      toast("Erro ao enviar foto: " + (err.message || ""), "error");
+    } finally {
+      setEnviando("");
+    }
+  }
+
+  async function enviarGaleria(files) {
+    for (const file of files) await enviarFoto("galeria", 0, file, "galeria");
+  }
+
+  function BotaoUpload({ chave, tipo, ordem, temFoto, multiple }) {
+    return (
+      <>
+        <input type="file" accept="image/*" multiple={!!multiple} style={{ display: "none" }} id={`sitefoto-${chave}`}
+          onChange={e => {
+            const files = [...(e.target.files || [])];
+            e.target.value = "";
+            if (!files.length) return;
+            if (multiple) enviarGaleria(files);
+            else enviarFoto(tipo, ordem, files[0], chave);
+          }} />
+        <label htmlFor={`sitefoto-${chave}`} className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
+          {enviando === chave ? "Enviando..." : temFoto ? "Trocar" : multiple ? "Adicionar fotos" : "Enviar foto"}
+        </label>
+      </>
+    );
+  }
+
+  function Slot({ foto, chave, tipo, ordem, titulo, alturaThumb = 110 }) {
+    return (
+      <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ height: alturaThumb, borderRadius: 6, overflow: "hidden", background: "var(--surface3)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text2)", fontSize: 26 }}>
+          {enviando === chave ? <div className="spinner" style={{ width: 20, height: 20 }} /> : foto?.imagem ? <img src={foto.imagem} alt={titulo || "Foto do site"} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "📷"}
+        </div>
+        {titulo && <div style={{ fontSize: 11, color: "var(--text2)", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 700 }}>{titulo}</div>}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <BotaoUpload chave={chave} tipo={tipo} ordem={ordem} temFoto={!!foto} />
+          {foto && <button className="btn btn-danger btn-sm" onClick={() => setConfirmRemover(foto.id)}>Remover</button>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><h1 className="page-title">Fotos do Site</h1><p className="page-sub">As fotos trocadas aqui aparecem no site da loja em tempo real</p></div>
+      </div>
+
+      {loadingFotos ? <div style={{ color: "var(--text2)", fontSize: 13, padding: "20px 0" }}>Carregando fotos...</div> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className="card">
+            <div className="card-header"><div className="card-title">Carrossel do Topo</div></div>
+            <div className="card-body">
+              <p style={{ fontSize: 12.5, color: "var(--text2)", margin: "0 0 14px" }}>São 5 fotos grandes que passam no topo do site. O título de cada quadro indica a frase que aparece por cima da foto. Prefira fotos na horizontal e com boa luz.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
+                {SLIDES_CARROSSEL.map(s => (
+                  <Slot key={s.ordem} foto={carrossel.find(f => f.ordem === s.ordem)} chave={`carrossel-${s.ordem}`} tipo="carrossel" ordem={s.ordem} titulo={`${s.ordem}. ${s.titulo}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header"><div className="card-title">Foto da Dona</div></div>
+            <div className="card-body">
+              <p style={{ fontSize: 12.5, color: "var(--text2)", margin: "0 0 14px" }}>Aparece na seção "Nossa História" do site. Prefira foto na vertical.</p>
+              <div style={{ maxWidth: 220 }}>
+                <Slot foto={fotoDona} chave="dona" tipo="dona" ordem={0} alturaThumb={200} />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">Galeria</div>
+              <BotaoUpload chave="galeria" tipo="galeria" ordem={0} multiple />
+            </div>
+            <div className="card-body">
+              <p style={{ fontSize: 12.5, color: "var(--text2)", margin: "0 0 14px" }}>Fotos que passam na faixa "Nossa Galeria" do site. Pode adicionar quantas quiser — o ideal são pelo menos 6.</p>
+              {galeria.length === 0
+                ? <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text2)", fontSize: 13 }}>Nenhuma foto na galeria ainda. Enquanto estiver vazia, o site mostra os ícones padrão.</div>
+                : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
+                  {galeria.map(f => (
+                    <div key={f.id} style={{ position: "relative", borderRadius: "var(--radius-sm)", overflow: "hidden", border: "1px solid var(--border)" }}>
+                      <img src={f.imagem} alt="Foto da galeria" style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
+                      <button className="btn-icon danger" style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.55)" }} onClick={() => setConfirmRemover(f.id)}><Icon name="trash" /></button>
+                    </div>
+                  ))}
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog open={!!confirmRemover} title="Remover foto do site?" text="A foto some do site na hora. Você pode enviar outra quando quiser." danger
+        onConfirm={async () => { await deleteDoc(doc(db, "siteFotos", confirmRemover)); setConfirmRemover(null); toast("Foto removida"); }}
+        onCancel={() => setConfirmRemover(null)} />
+    </div>
+  );
+}
+
 const NAV_BASE = [
   { id: "painel", label: "Painel", icon: "dashboard", group: "Principal" },
   { id: "venda", label: "Nova Venda", icon: "sell", group: "Principal" },
@@ -3051,7 +3187,10 @@ const NAV_BASE = [
   { id: "categorias", label: "Categorias", icon: "categories", group: "Dados" },
   { id: "relatorio", label: "Relatório PDF", icon: "pdf", group: "Dados" },
 ];
-const NAV_DONO = [{ id: "usuarios", label: "Usuários", icon: "clients", group: "Admin" }];
+const NAV_DONO = [
+  { id: "fotosite", label: "Fotos do Site", icon: "eye", group: "Admin" },
+  { id: "usuarios", label: "Usuários", icon: "clients", group: "Admin" },
+];
 
 function Sidebar({ page, onNavigate, onLogout, open, onClose, perfil, isDono }) {
   const navItems = isDono ? [...NAV_BASE, ...NAV_DONO] : NAV_BASE;
@@ -3365,6 +3504,7 @@ export default function App() {
     if (page === "compras") return <Compras compras={compras} onAdicionar={adicionarCompra} onReceber={receberCompra} onRemover={removerCompra} />;
     if (page === "encomendas") return <Encomendas encomendas={encomendas} onAdicionar={adicionarEncomenda} onAtualizar={atualizarEncomenda} onRemover={removerEncomenda} />;
     if (page === "fiado") return <Fiado fiados={fiados} onAdicionar={adicionarFiado} onPagar={pagarFiado} onPagarParcial={pagarParcialFiado} onRemover={removerFiado} dados={dados} />;
+    if (page === "fotosite" && isDono) return <FotosSite />;
     if (page === "usuarios" && isDono) return <GerenciarUsuarios usuarioAtual={usuario} />;
   }
 
