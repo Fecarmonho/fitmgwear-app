@@ -4,7 +4,7 @@
   "description": "Sistema de Gestão FitMGwear",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0c0c0c",
+  "background_color": "#ffffff",
   "theme_color": "#0c0c0c",
   "orientation": "portrait",
   "icons": [

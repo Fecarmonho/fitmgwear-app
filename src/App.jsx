@@ -316,6 +316,14 @@ const CSS = `
   .tag-opt.selected { background: rgba(232,184,75,0.15); border-color: var(--accent); color: var(--accent); }
 
   .loading-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:var(--bg); }
+
+  /* Tela de abertura do app — fundo branco com a marca em destaque */
+  .splash { position:fixed; inset:0; z-index:999; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px; padding:32px; }
+  .splash-logo { width:min(62vw, 300px); height:auto; object-fit:contain; animation:splashIn 0.5s ease-out both; }
+  .splash-nome { font-family:'Bebas Neue', sans-serif; font-size:clamp(30px, 8vw, 46px); letter-spacing:4px; color:#111; line-height:1; text-align:center; animation:splashIn 0.5s 0.1s ease-out both; }
+  .splash-nome span { color:var(--accent); }
+  .splash-spinner { width:26px; height:26px; border:3px solid rgba(0,0,0,0.1); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes splashIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
   .spinner { width:32px; height:32px; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
   @keyframes spin { to{transform:rotate(360deg)} }
 
@@ -504,6 +512,20 @@ function ConfirmDialog({ open, title, text, onConfirm, onCancel, danger }) {
 // ─────────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// SPLASH — tela de abertura do app
+// ─────────────────────────────────────────────
+function SplashScreen() {
+  return (
+    <div className="splash">
+      {/* logo-512 em vez do logo.png (142px) — não borra ao aparecer grande */}
+      <img src="/logo-512.png" alt="FIT MG WEAR" className="splash-logo" onError={e => { e.currentTarget.src = logoImg; }} />
+      <div className="splash-nome">FITMGWEAR <span>OFICIAL</span></div>
+      <div className="splash-spinner" />
+    </div>
+  );
+}
+
 function LoginScreen({ primeiroAcesso }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -3478,9 +3500,9 @@ export default function App() {
   async function removerVariante(id) { await deleteDoc(doc(db, "variantesProduto", id)); }
   async function atualizarVariante(id, upd) { const v = variantesProduto.find(x => x.id === id); if (v) await setDoc(doc(db, "variantesProduto", id), { ...v, ...upd }); }
 
-  if (authLoading) return (<><style>{CSS}</style><div className="loading-screen"><div className="spinner" /><p style={{ color: "var(--text2)", fontSize: 13 }}>Verificando acesso...</p></div></>);
+  if (authLoading) return (<><style>{CSS}</style><SplashScreen /></>);
   if (!usuario) return (<><style>{CSS}</style><LoginScreen primeiroAcesso={primeiroAcesso} /><ToastContainer /></>);
-  if (loading) return (<><style>{CSS}</style><div className="loading-screen"><div className="spinner" /><p style={{ color: "var(--text2)", fontSize: 13 }}>Carregando dados...</p></div></>);
+  if (loading) return (<><style>{CSS}</style><SplashScreen /></>);
 
   function renderPage() {
     if (page === "painel") return <Dashboard dados={dados} />;
