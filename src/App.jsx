@@ -4,7 +4,6 @@ import logoImg from "./logo.png";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs, getDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB2t0DPn-t_-bYuEJKd3X0h8j6v6bSTuAg",
@@ -19,10 +18,36 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app);
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function lerImagemComoBase64(file, maxLado = 480, qualidade = 0.75) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve("");
+    if (!file.type || !file.type.startsWith("image/")) return reject(new Error("Arquivo não é uma imagem"));
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxLado || height > maxLado) {
+          if (width > height) { height = Math.round(height * (maxLado / width)); width = maxLado; }
+          else { width = Math.round(width * (maxLado / height)); height = maxLado; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", qualidade));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function formatBRL(v) {
@@ -41,6 +66,41 @@ function hojeLocal() {
   const mes = String(d.getMonth() + 1).padStart(2, "0");
   const dia = String(d.getDate()).padStart(2, "0");
   return `${ano}-${mes}-${dia}`;
+}
+
+// ─────────────────────────────────────────────
+// ORDENAÇÃO DE VARIANTES (Tamanho/Cor)
+// ─────────────────────────────────────────────
+const ORDEM_TAMANHOS = ["PP", "P", "M", "G", "GG", "GG1", "GG2", "GG3", "XG", "XGG", "EG", "EGG", "EXG", "EXGG", "U", "UNICO", "ÚNICO"];
+
+function tamanhoRank(tam) {
+  const t = (tam || "").trim().toUpperCase();
+  const idx = ORDEM_TAMANHOS.indexOf(t);
+  if (idx !== -1) return idx;
+  if (/^\d+$/.test(t)) return 1000 + parseInt(t, 10); // numeração (ex: 36, 38, 40...)
+  return 2000; // tamanhos não reconhecidos vão por último
+}
+
+function compararTamanhos(a, b) {
+  const ra = tamanhoRank(a), rb = tamanhoRank(b);
+  if (ra !== rb) return ra - rb;
+  return (a || "").localeCompare(b || "", "pt-BR", { sensitivity: "base" });
+}
+
+function partesVariante(label) {
+  const partes = (label || "").split("/").map(s => s.trim());
+  const [tam, ...corParts] = partes;
+  return { tam: tam || "", cor: corParts.join("/") };
+}
+
+function ordenarVariantes(vars) {
+  return [...vars].sort((a, b) => {
+    const pa = partesVariante(a.label);
+    const pb = partesVariante(b.label);
+    const cmpCor = pa.cor.localeCompare(pb.cor, "pt-BR", { sensitivity: "base" });
+    if (cmpCor !== 0) return cmpCor;
+    return compararTamanhos(pa.tam, pb.tam);
+  });
 }
 
 // ─────────────────────────────────────────────
@@ -256,6 +316,14 @@ const CSS = `
   .tag-opt.selected { background: rgba(232,184,75,0.15); border-color: var(--accent); color: var(--accent); }
 
   .loading-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:var(--bg); }
+
+  /* Tela de abertura do app — fundo branco com a marca em destaque */
+  .splash { position:fixed; inset:0; z-index:999; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px; padding:32px; }
+  .splash-logo { width:min(62vw, 300px); height:auto; object-fit:contain; animation:splashIn 0.5s ease-out both; }
+  .splash-nome { font-family:'Bebas Neue', sans-serif; font-size:clamp(30px, 8vw, 46px); letter-spacing:4px; color:#111; line-height:1; text-align:center; animation:splashIn 0.5s 0.1s ease-out both; }
+  .splash-nome span { color:var(--accent); }
+  .splash-spinner { width:26px; height:26px; border:3px solid rgba(0,0,0,0.1); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes splashIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
   .spinner { width:32px; height:32px; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
   @keyframes spin { to{transform:rotate(360deg)} }
 
@@ -366,7 +434,6 @@ const Icon = ({ name, size = 16 }) => {
     inbox: <path d="M19 3H4.99C3.89 3 3 3.9 3 5L3 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.34 3-3 3s-3-1.34-3-3H4.99V5H19v10z" fill="currentColor"/>,
     handshake: <path d="M11 5L6 9H2v6h4l5 4V5zm7.54 1.46a7 7 0 0 1 0 9.9l-1.41-1.41a5 5 0 0 0 0-7.07l1.41-1.42zM15.71 8.3a3 3 0 0 1 0 4.24l-1.42-1.42a1 1 0 0 0 0-1.41L15.71 8.3z" fill="currentColor"/>,
     balanco: <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="currentColor"/>,
-    globe: <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.93 6H16.6a15.6 15.6 0 0 0-1.3-3.36A8.03 8.03 0 0 1 18.93 8zM12 4.04c.83 1.2 1.48 2.53 1.9 3.96h-3.8c.42-1.43 1.07-2.76 1.9-3.96zM4.26 14a7.94 7.94 0 0 1 0-4h2.7a16.3 16.3 0 0 0 0 4h-2.7zm.81 2h2.33c.32 1.2.77 2.34 1.3 3.36A8.03 8.03 0 0 1 5.07 16zm2.33-8H5.07a8.03 8.03 0 0 1 3.63-3.36A15.6 15.6 0 0 0 7.4 8zM12 19.96a15.6 15.6 0 0 1-1.9-3.96h3.8c-.42 1.43-1.07 2.76-1.9 3.96zM14.34 14H9.66a14.02 14.02 0 0 1 0-4h4.68a14.02 14.02 0 0 1 0 4zm.27 5.36c.53-1.02.98-2.16 1.3-3.36h2.33a8.03 8.03 0 0 1-3.63 3.36zM17.04 14a16.3 16.3 0 0 0 0-4h2.7a7.94 7.94 0 0 1 0 4h-2.7z" fill="currentColor"/>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -445,6 +512,20 @@ function ConfirmDialog({ open, title, text, onConfirm, onCancel, danger }) {
 // ─────────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// SPLASH — tela de abertura do app
+// ─────────────────────────────────────────────
+function SplashScreen() {
+  return (
+    <div className="splash">
+      {/* logo-splash: fundo transparente e 512px — o logo-512.png do PWA tem fundo preto */}
+      <img src="/logo-splash.png" alt="FIT MG WEAR" className="splash-logo" onError={e => { e.currentTarget.src = logoImg; }} />
+      <div className="splash-nome">FITMGWEAR <span>OFICIAL</span></div>
+      <div className="splash-spinner" />
+    </div>
+  );
+}
+
 function LoginScreen({ primeiroAcesso }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -1167,7 +1248,7 @@ function gerarBalancoPDF(produtos, variantesProduto) {
   let totalValorVenda = 0;
 
   const linhasProdutos = produtos.map(p => {
-    const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
+    const vars = ordenarVariantes(variantesProduto.filter(v => v.produtoPaiId === p.id));
     const temVars = vars.length > 0;
     const estoqueTotal = temVars ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
     const custoTotal = estoqueTotal * p.precoCompra;
@@ -1509,7 +1590,10 @@ function SeletorItemVenda({ dados, onAdicionarItem, estoqueReservado }) {
         tamSet.add(v.label); coresMap[v.label] = [{ cor: "", variante: v }];
       }
     });
-    return { tamanhos: [...tamSet], coresParaTam: coresMap };
+    Object.keys(coresMap).forEach(tam => {
+      coresMap[tam].sort((a, b) => a.cor.localeCompare(b.cor, "pt-BR", { sensitivity: "base" }));
+    });
+    return { tamanhos: [...tamSet].sort(compararTamanhos), coresParaTam: coresMap };
   }, [variantesDisp, temVariantes]);
 
   const varianteSel = useMemo(() => {
@@ -1882,22 +1966,26 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   const [form, setForm] = useState({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" });
   const [novaVariante, setNovaVariante] = useState({ label: "", estoque: "" });
   const [editandoVariante, setEditandoVariante] = useState(null);
-  const [arquivoImagem, setArquivoImagem] = useState(null);
-  const [previewImagem, setPreviewImagem] = useState("");
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  function handleImagemChange(e) {
+  async function handleImagemChange(e) {
     const file = e.target.files && e.target.files[0];
+    e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) return toast("Selecione um arquivo de imagem", "error");
-    if (file.size > 5 * 1024 * 1024) return toast("Imagem muito grande (máx. 5MB)", "error");
-    setArquivoImagem(file);
-    setPreviewImagem(URL.createObjectURL(file));
+    setEnviandoImagem(true);
+    try {
+      const base64 = await lerImagemComoBase64(file);
+      set("imagemUrl", base64);
+    } catch {
+      toast("Não foi possível carregar essa imagem", "error");
+    } finally {
+      setEnviandoImagem(false);
+    }
   }
 
   function removerImagemSelecionada() {
-    setArquivoImagem(null);
-    setPreviewImagem("");
     setForm(p => ({ ...p, imagemUrl: "" }));
   }
 
@@ -1924,9 +2012,8 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   }, 0);
 
   function abrirModal(p = null) {
-    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "", imagemUrl: p.imagemUrl || "" }); setPreviewImagem(p.imagemUrl || ""); }
-    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" }); setPreviewImagem(""); }
-    setArquivoImagem(null);
+    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "", imagemUrl: p.imagemUrl || "" }); }
+    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" }); }
     setModal(true);
   }
 
@@ -1939,19 +2026,12 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     if (!form.precoVenda || parseFloat(form.precoVenda) <= 0) return toast("Preço de venda inválido", "error");
     setSalvando(true);
     try {
-      let imagemUrl = form.imagemUrl || "";
-      if (arquivoImagem) {
-        const caminho = `produtos/${uid()}_${arquivoImagem.name}`;
-        const imgRef = storageRef(storage, caminho);
-        await uploadBytes(imgRef, arquivoImagem);
-        imagemUrl = await getDownloadURL(imgRef);
-      }
-      const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl };
+      const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl: form.imagemUrl || "" };
       if (editando) { await onAtualizar(editando, d); toast("Produto atualizado"); }
       else { await onAdicionar(d); toast("Produto adicionado"); }
       setModal(false);
     } catch (err) {
-      toast("Erro ao salvar imagem: " + (err.message || ""), "error");
+      toast("Erro ao salvar produto: " + (err.message || ""), "error");
     } finally {
       setSalvando(false);
     }
@@ -2013,7 +2093,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
               <thead><tr><th>Produto</th><th>SKU</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Margem</th><th></th></tr></thead>
               <tbody>
                 {produtos.map(p => {
-                  const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
+                  const vars = ordenarVariantes(variantesProduto.filter(v => v.produtoPaiId === p.id));
                   const temVars = vars.length > 0;
                   const estoqueTotal = temVars ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
                   const baixo = estoqueTotal <= p.quantidadeMinima;
@@ -2067,14 +2147,12 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
             <div className="input-group" style={{ gridColumn: "1 / -1" }}>
               <label className="input-label">Foto do Produto</label>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                {previewImagem && (
-                  <div style={{ width: 64, height: 64, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border2)", flexShrink: 0, background: "var(--surface2)" }}>
-                    <img src={previewImagem} alt="Prévia" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  </div>
-                )}
+                <div style={{ width: 64, height: 64, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border2)", flexShrink: 0, background: "var(--surface2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {enviandoImagem ? <div className="spinner" style={{ width: 18, height: 18 }} /> : form.imagemUrl ? <img src={form.imagemUrl} alt="Prévia" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👕"}
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <input type="file" accept="image/*" onChange={handleImagemChange} />
-                  {previewImagem && <button type="button" className="btn btn-sm btn-secondary" style={{ alignSelf: "flex-start" }} onClick={removerImagemSelecionada}>Remover foto</button>}
+                  {form.imagemUrl && <button type="button" className="btn btn-sm btn-secondary" style={{ alignSelf: "flex-start" }} onClick={removerImagemSelecionada}>Remover foto</button>}
                 </div>
               </div>
             </div>
@@ -2122,7 +2200,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
 
       <Modal open={!!modalVariantes} onClose={() => setModalVariantes(null)} title={`Variantes — ${modalVariantes?.nome || ""}`} wide>
         {modalVariantes && (() => {
-          const vars = variantesProduto.filter(v => v.produtoPaiId === modalVariantes.id);
+          const vars = ordenarVariantes(variantesProduto.filter(v => v.produtoPaiId === modalVariantes.id));
           return (
             <div>
               <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>Cada variante é uma combinação livre, ex: <strong style={{ color: "var(--text)" }}>P/Preto</strong>, <strong style={{ color: "var(--text)" }}>G/Azul</strong>.</div>
@@ -2982,6 +3060,142 @@ function Fiado({ fiados, onAdicionar, onPagar, onPagarParcial, onRemover, dados 
 // ─────────────────────────────────────────────
 // SIDEBAR
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// FOTOS DO SITE (carrossel, galeria e foto da dona)
+// ─────────────────────────────────────────────
+const SLIDES_CARROSSEL = [
+  { ordem: 1, titulo: "Vista sua força" },
+  { ordem: 2, titulo: "Design que encanta" },
+  { ordem: 3, titulo: "Feito para treinar" },
+  { ordem: 4, titulo: "Beleza e poder" },
+  { ordem: 5, titulo: "Entrega todo Brasil" },
+];
+
+function FotosSite() {
+  const [fotos, loadingFotos] = useCollection("siteFotos");
+  const [enviando, setEnviando] = useState("");
+  const [confirmRemover, setConfirmRemover] = useState(null);
+
+  const carrossel = fotos.filter(f => f.tipo === "carrossel");
+  const galeria = [...fotos.filter(f => f.tipo === "galeria")].sort((a, b) => (a.criadoEm || "").localeCompare(b.criadoEm || ""));
+  const fotoDona = fotos.find(f => f.tipo === "dona");
+
+  async function enviarFoto(tipo, ordem, file, chave) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast("Selecione um arquivo de imagem", "error");
+    setEnviando(chave);
+    try {
+      // Carrossel aparece em tela cheia no site — precisa de mais resolução
+      const maxLado = tipo === "carrossel" ? 1280 : 800;
+      const imagem = await lerImagemComoBase64(file, maxLado, 0.8);
+      const existente = tipo === "carrossel" ? carrossel.find(f => f.ordem === ordem) : tipo === "dona" ? fotoDona : null;
+      const id = existente ? existente.id : uid();
+      await setDoc(doc(db, "siteFotos", id), { id, tipo, ordem: ordem || 0, imagem, criadoEm: existente?.criadoEm || new Date().toISOString() });
+      toast("Foto do site atualizada ✓");
+    } catch (err) {
+      toast("Erro ao enviar foto: " + (err.message || ""), "error");
+    } finally {
+      setEnviando("");
+    }
+  }
+
+  async function enviarGaleria(files) {
+    for (const file of files) await enviarFoto("galeria", 0, file, "galeria");
+  }
+
+  function BotaoUpload({ chave, tipo, ordem, temFoto, multiple }) {
+    return (
+      <>
+        <input type="file" accept="image/*" multiple={!!multiple} style={{ display: "none" }} id={`sitefoto-${chave}`}
+          onChange={e => {
+            const files = [...(e.target.files || [])];
+            e.target.value = "";
+            if (!files.length) return;
+            if (multiple) enviarGaleria(files);
+            else enviarFoto(tipo, ordem, files[0], chave);
+          }} />
+        <label htmlFor={`sitefoto-${chave}`} className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
+          {enviando === chave ? "Enviando..." : temFoto ? "Trocar" : multiple ? "Adicionar fotos" : "Enviar foto"}
+        </label>
+      </>
+    );
+  }
+
+  function Slot({ foto, chave, tipo, ordem, titulo, alturaThumb = 110 }) {
+    return (
+      <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ height: alturaThumb, borderRadius: 6, overflow: "hidden", background: "var(--surface3)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text2)", fontSize: 26 }}>
+          {enviando === chave ? <div className="spinner" style={{ width: 20, height: 20 }} /> : foto?.imagem ? <img src={foto.imagem} alt={titulo || "Foto do site"} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "📷"}
+        </div>
+        {titulo && <div style={{ fontSize: 11, color: "var(--text2)", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 700 }}>{titulo}</div>}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <BotaoUpload chave={chave} tipo={tipo} ordem={ordem} temFoto={!!foto} />
+          {foto && <button className="btn btn-danger btn-sm" onClick={() => setConfirmRemover(foto.id)}>Remover</button>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><h1 className="page-title">Fotos do Site</h1><p className="page-sub">As fotos trocadas aqui aparecem no site da loja em tempo real</p></div>
+      </div>
+
+      {loadingFotos ? <div style={{ color: "var(--text2)", fontSize: 13, padding: "20px 0" }}>Carregando fotos...</div> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className="card">
+            <div className="card-header"><div className="card-title">Carrossel do Topo</div></div>
+            <div className="card-body">
+              <p style={{ fontSize: 12.5, color: "var(--text2)", margin: "0 0 14px" }}>São 5 fotos grandes que passam no topo do site. O título de cada quadro indica a frase que aparece por cima da foto. Prefira fotos na horizontal e com boa luz.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
+                {SLIDES_CARROSSEL.map(s => (
+                  <Slot key={s.ordem} foto={carrossel.find(f => f.ordem === s.ordem)} chave={`carrossel-${s.ordem}`} tipo="carrossel" ordem={s.ordem} titulo={`${s.ordem}. ${s.titulo}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header"><div className="card-title">Foto da Dona</div></div>
+            <div className="card-body">
+              <p style={{ fontSize: 12.5, color: "var(--text2)", margin: "0 0 14px" }}>Aparece na seção "Nossa História" do site. Prefira foto na vertical.</p>
+              <div style={{ maxWidth: 220 }}>
+                <Slot foto={fotoDona} chave="dona" tipo="dona" ordem={0} alturaThumb={200} />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">Galeria</div>
+              <BotaoUpload chave="galeria" tipo="galeria" ordem={0} multiple />
+            </div>
+            <div className="card-body">
+              <p style={{ fontSize: 12.5, color: "var(--text2)", margin: "0 0 14px" }}>Fotos que passam na faixa "Nossa Galeria" do site. Pode adicionar quantas quiser — o ideal são pelo menos 6.</p>
+              {galeria.length === 0
+                ? <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text2)", fontSize: 13 }}>Nenhuma foto na galeria ainda. Enquanto estiver vazia, o site mostra os ícones padrão.</div>
+                : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 12 }}>
+                  {galeria.map(f => (
+                    <div key={f.id} style={{ position: "relative", borderRadius: "var(--radius-sm)", overflow: "hidden", border: "1px solid var(--border)" }}>
+                      <img src={f.imagem} alt="Foto da galeria" style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
+                      <button className="btn-icon danger" style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.55)" }} onClick={() => setConfirmRemover(f.id)}><Icon name="trash" /></button>
+                    </div>
+                  ))}
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog open={!!confirmRemover} title="Remover foto do site?" text="A foto some do site na hora. Você pode enviar outra quando quiser." danger
+        onConfirm={async () => { await deleteDoc(doc(db, "siteFotos", confirmRemover)); setConfirmRemover(null); toast("Foto removida"); }}
+        onCancel={() => setConfirmRemover(null)} />
+    </div>
+  );
+}
+
 const NAV_BASE = [
   { id: "painel", label: "Painel", icon: "dashboard", group: "Principal" },
   { id: "venda", label: "Nova Venda", icon: "sell", group: "Principal" },
@@ -2995,7 +3209,10 @@ const NAV_BASE = [
   { id: "categorias", label: "Categorias", icon: "categories", group: "Dados" },
   { id: "relatorio", label: "Relatório PDF", icon: "pdf", group: "Dados" },
 ];
-const NAV_DONO = [{ id: "usuarios", label: "Usuários", icon: "clients", group: "Admin" }];
+const NAV_DONO = [
+  { id: "fotosite", label: "Fotos do Site", icon: "eye", group: "Admin" },
+  { id: "usuarios", label: "Usuários", icon: "clients", group: "Admin" },
+];
 
 function Sidebar({ page, onNavigate, onLogout, open, onClose, perfil, isDono }) {
   const navItems = isDono ? [...NAV_BASE, ...NAV_DONO] : NAV_BASE;
@@ -3032,14 +3249,6 @@ function Sidebar({ page, onNavigate, onLogout, open, onClose, perfil, isDono }) 
           <div style={{ display: "flex", alignItems: "center", padding: "4px 12px 8px", fontSize: 11, color: "var(--text2)" }}>
             <Icon name="sync" size={12} /><span style={{ marginLeft: 6 }}>Firebase — tempo real</span><div className="sync-dot" />
           </div>
-          <a
-            className="footer-btn"
-            href="https://fitmgwear-site.vercel.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Icon name="globe" size={14} />Ver site
-          </a>
           <button className="footer-btn danger" onClick={onLogout}><Icon name="lock" size={14} />Sair</button>
         </div>
       </aside>
@@ -3280,8 +3489,6 @@ export default function App() {
   // Produtos
   async function adicionarProduto(p) { const id = uid(); await setDoc(doc(db, "produtos", id), { ...p, id, dataCriacao: new Date().toISOString() }); }
   async function removerProduto(id) {
-    const p = produtos.find(x => x.id === id);
-    if (p?.imagemUrl) { try { await deleteObject(storageRef(storage, p.imagemUrl)); } catch { /* imagem já pode não existir */ } }
     await deleteDoc(doc(db, "produtos", id));
     const vars = variantesProduto.filter(v => v.produtoPaiId === id);
     for (const v of vars) await deleteDoc(doc(db, "variantesProduto", v.id));
@@ -3293,9 +3500,9 @@ export default function App() {
   async function removerVariante(id) { await deleteDoc(doc(db, "variantesProduto", id)); }
   async function atualizarVariante(id, upd) { const v = variantesProduto.find(x => x.id === id); if (v) await setDoc(doc(db, "variantesProduto", id), { ...v, ...upd }); }
 
-  if (authLoading) return (<><style>{CSS}</style><div className="loading-screen"><div className="spinner" /><p style={{ color: "var(--text2)", fontSize: 13 }}>Verificando acesso...</p></div></>);
+  if (authLoading) return (<><style>{CSS}</style><SplashScreen /></>);
   if (!usuario) return (<><style>{CSS}</style><LoginScreen primeiroAcesso={primeiroAcesso} /><ToastContainer /></>);
-  if (loading) return (<><style>{CSS}</style><div className="loading-screen"><div className="spinner" /><p style={{ color: "var(--text2)", fontSize: 13 }}>Carregando dados...</p></div></>);
+  if (loading) return (<><style>{CSS}</style><SplashScreen /></>);
 
   function renderPage() {
     if (page === "painel") return <Dashboard dados={dados} />;
@@ -3319,6 +3526,7 @@ export default function App() {
     if (page === "compras") return <Compras compras={compras} onAdicionar={adicionarCompra} onReceber={receberCompra} onRemover={removerCompra} />;
     if (page === "encomendas") return <Encomendas encomendas={encomendas} onAdicionar={adicionarEncomenda} onAtualizar={atualizarEncomenda} onRemover={removerEncomenda} />;
     if (page === "fiado") return <Fiado fiados={fiados} onAdicionar={adicionarFiado} onPagar={pagarFiado} onPagarParcial={pagarParcialFiado} onRemover={removerFiado} dados={dados} />;
+    if (page === "fotosite" && isDono) return <FotosSite />;
     if (page === "usuarios" && isDono) return <GerenciarUsuarios usuarioAtual={usuario} />;
   }
 
