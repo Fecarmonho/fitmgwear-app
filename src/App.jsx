@@ -1,517 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import logoImg from "./logo.png";
 
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs, getDoc } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { collection, query, where, doc, onSnapshot, setDoc, deleteDoc, getDocs } from "firebase/firestore";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB2t0DPn-t_-bYuEJKd3X0h8j6v6bSTuAg",
-  authDomain: "fitmgwear-app.firebaseapp.com",
-  projectId: "fitmgwear-app",
-  storageBucket: "fitmgwear-app.firebasestorage.app",
-  messagingSenderId: "324978242715",
-  appId: "1:324978242715:web:c0eae2c0ebd6ad8626c23e",
-  measurementId: "G-NF8VNZ0GXD"
-};
+import { db, auth } from "./firebase.js";
+import { CSS } from "./styles.js";
+import { uid, lerImagemComoBase64, formatBRL, formatData, hojeLocal, ordenarVariantes, compararTamanhos } from "./utils.js";
+import { Icon } from "./components/Icon.jsx";
+import { toast } from "./toast.js";
+import { ToastContainer } from "./components/Toast.jsx";
+import { Modal, ConfirmDialog } from "./components/Modal.jsx";
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
-
-function lerImagemComoBase64(file, maxLado = 480, qualidade = 0.75) {
-  return new Promise((resolve, reject) => {
-    if (!file) return resolve("");
-    if (!file.type || !file.type.startsWith("image/")) return reject(new Error("Arquivo não é uma imagem"));
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxLado || height > maxLado) {
-          if (width > height) { height = Math.round(height * (maxLado / width)); width = maxLado; }
-          else { width = Math.round(width * (maxLado / height)); height = maxLado; }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", qualidade));
-      };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function formatBRL(v) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
-}
-
-function formatData(iso) {
-  if (!iso) return "";
-  const partes = iso.slice(0, 10).split("-");
-  return `${partes[2]}/${partes[1]}/${partes[0]}`;
-}
-
-function hojeLocal() {
-  const d = new Date();
-  const ano = d.getFullYear();
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
-}
-
-// ─────────────────────────────────────────────
-// ORDENAÇÃO DE VARIANTES (Tamanho/Cor)
-// ─────────────────────────────────────────────
-const ORDEM_TAMANHOS = ["PP", "P", "M", "G", "GG", "GG1", "GG2", "GG3", "XG", "XGG", "EG", "EGG", "EXG", "EXGG", "U", "UNICO", "ÚNICO"];
-
-function tamanhoRank(tam) {
-  const t = (tam || "").trim().toUpperCase();
-  const idx = ORDEM_TAMANHOS.indexOf(t);
-  if (idx !== -1) return idx;
-  if (/^\d+$/.test(t)) return 1000 + parseInt(t, 10); // numeração (ex: 36, 38, 40...)
-  return 2000; // tamanhos não reconhecidos vão por último
-}
-
-function compararTamanhos(a, b) {
-  const ra = tamanhoRank(a), rb = tamanhoRank(b);
-  if (ra !== rb) return ra - rb;
-  return (a || "").localeCompare(b || "", "pt-BR", { sensitivity: "base" });
-}
-
-function partesVariante(label) {
-  const partes = (label || "").split("/").map(s => s.trim());
-  const [tam, ...corParts] = partes;
-  return { tam: tam || "", cor: corParts.join("/") };
-}
-
-function ordenarVariantes(vars) {
-  return [...vars].sort((a, b) => {
-    const pa = partesVariante(a.label);
-    const pb = partesVariante(b.label);
-    const cmpCor = pa.cor.localeCompare(pb.cor, "pt-BR", { sensitivity: "base" });
-    if (cmpCor !== 0) return cmpCor;
-    return compararTamanhos(pa.tam, pb.tam);
-  });
-}
-
-// ─────────────────────────────────────────────
-// CSS
-// ─────────────────────────────────────────────
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0c0c0c;
-    --surface: #161616;
-    --surface2: #1e1e1e;
-    --surface3: #282828;
-    --border: rgba(255,255,255,0.06);
-    --border2: rgba(255,255,255,0.1);
-    --text: #f2f2f2;
-    --text2: #888;
-    --accent: #e8b84b;
-    --accent2: #f5d07a;
-    --green: #3ecf8e;
-    --red: #f06060;
-    --yellow: #f5a623;
-    --blue: #4da6ff;
-    --sidebar-w: 260px;
-    --radius: 10px;
-    --radius-sm: 7px;
-  }
-
-  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; line-height: 1.5; min-height: 100vh; }
-  h1,h2,h3,h4 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; }
-
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
-
-  .app { display: flex; height: 100vh; overflow: hidden; }
-
-  .sidebar {
-    width: var(--sidebar-w);
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; flex-shrink: 0;
-    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
-    z-index: 100;
-  }
-  .sidebar-logo { padding: 22px 20px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
-  .logo-img { width: 38px; height: 38px; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
-  .logo-img img { width: 100%; height: 100%; object-fit: contain; }
-  .logo-name { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--accent); line-height: 1; }
-  .logo-sub { font-size: 10px; color: var(--text2); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
-
-  .sidebar-nav { flex: 1; overflow-y: auto; padding: 14px 10px; }
-  .nav-label { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1.2px; padding: 10px 10px 4px; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text2); font-size: 13.5px; font-weight: 500; transition: all 0.15s; user-select: none; border-left: 2px solid transparent; margin-bottom: 2px; }
-  .nav-item:hover { background: var(--surface2); color: var(--text); }
-  .nav-item.active { background: rgba(232,184,75,0.08); color: var(--accent2); border-left-color: var(--accent); }
-  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
-
-  .sidebar-footer { padding: 12px 10px 16px; border-top: 1px solid var(--border); }
-  .footer-btn { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text2); font-size: 12.5px; font-weight: 500; background: none; border: none; width: 100%; text-align: left; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
-  .footer-btn:hover { background: var(--surface2); color: var(--text); }
-  .footer-btn.danger:hover { color: var(--red); background: rgba(240,96,96,0.07); }
-  .footer-btn svg { width: 14px; height: 14px; }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-left: auto; box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
-  .page { padding: 36px 48px; flex: 1; max-width: 1600px; width: 100%; margin: 0 auto; }
-  .page-header { margin-bottom: 28px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  .page-title { font-size: 28px; color: var(--text); line-height: 1; }
-  .page-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
-
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .card-header { padding: 18px 20px 0; display: flex; align-items: center; justify-content: space-between; }
-  .card-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px; color: var(--text2); }
-  .card-body { padding: 18px 20px; }
-
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 28px; }
-  .stats-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 18px; position: relative; overflow: hidden; transition: transform 0.15s, box-shadow 0.15s; min-width: 0; }
-  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.3); }
-  .stat-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
-  .stat-card.green::after { background: linear-gradient(90deg, var(--green), transparent); }
-  .stat-card.red::after   { background: linear-gradient(90deg, var(--red), transparent); }
-  .stat-card.blue::after  { background: linear-gradient(90deg, var(--blue), transparent); }
-  .stat-card.gold::after  { background: linear-gradient(90deg, var(--accent), transparent); }
-  .stat-card.green { border-color: rgba(62,207,142,0.2); }
-  .stat-card.red   { border-color: rgba(240,96,96,0.2); }
-  .stat-card.blue  { border-color: rgba(77,166,255,0.2); }
-  .stat-card.gold  { border-color: rgba(232,184,75,0.2); }
-  .stat-label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 14px; font-weight: 700; }
-  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 1px; line-height: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .stat-card.green .stat-value { color: var(--green); }
-  .stat-card.red .stat-value   { color: var(--red); }
-  .stat-card.blue .stat-value  { color: var(--blue); }
-  .stat-card.gold .stat-value  { color: var(--accent); }
-  .stat-sub { font-size: 12px; color: var(--text2); margin-top: 8px; }
-
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 18px; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; white-space: nowrap; }
-  .btn svg { width: 15px; height: 15px; }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
-  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
-  .btn-secondary:hover { background: var(--surface3); }
-  .btn-success { background: rgba(62,207,142,0.12); color: var(--green); border: 1px solid rgba(62,207,142,0.25); }
-  .btn-success:hover { background: rgba(62,207,142,0.22); }
-  .btn-danger { background: rgba(240,96,96,0.1); color: var(--red); border: 1px solid rgba(240,96,96,0.2); }
-  .btn-danger:hover { background: rgba(240,96,96,0.2); }
-  .btn-info { background: rgba(77,166,255,0.1); color: var(--blue); border: 1px solid rgba(77,166,255,0.2); }
-  .btn-info:hover { background: rgba(77,166,255,0.2); }
-  .btn-whatsapp { background: #25d366; color: #fff; border: none; }
-  .btn-whatsapp:hover { background: #20ba57; transform: translateY(-1px); }
-  .btn-sm { padding: 6px 13px; font-size: 12px; }
-  .btn-icon { padding: 7px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; }
-  .btn-icon:hover { color: var(--text); background: var(--surface3); }
-  .btn-icon.danger:hover { color: var(--red); background: rgba(240,96,96,0.1); border-color: rgba(240,96,96,0.3); }
-  .btn-icon svg { width: 14px; height: 14px; }
-
-  .input-group { display: flex; flex-direction: column; gap: 6px; }
-  .input-label { font-size: 11.5px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; }
-  .input { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 13px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13.5px; width: 100%; transition: border-color 0.15s; outline: none; }
-  .input:focus { border-color: var(--accent); }
-  .input::placeholder { color: var(--text2); }
-  select.input { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
-  textarea.input { resize: vertical; min-height: 80px; }
-
-  .form-grid { display: grid; gap: 16px; }
-  .form-grid-2 { grid-template-columns: 1fr 1fr; }
-  .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
-
-  .margem-preview { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .margem-item { display: flex; flex-direction: column; gap: 2px; }
-  .margem-item-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
-  .margem-item-value { font-family: 'Bebas Neue', sans-serif; font-size: 18px; }
-
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; padding: 11px 16px; font-size: 10.5px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.7px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 1; }
-  td { padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,0.015); }
-
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; }
-  .badge-green  { background: rgba(62,207,142,0.12); color: var(--green); }
-  .badge-red    { background: rgba(240,96,96,0.12); color: var(--red); }
-  .badge-yellow { background: rgba(245,166,35,0.12); color: var(--yellow); }
-  .badge-blue   { background: rgba(77,166,255,0.12); color: var(--blue); }
-  .badge-gold   { background: rgba(232,184,75,0.12); color: var(--accent); }
-  .badge-purple { background: rgba(167,139,250,0.12); color: #a78bfa; }
-
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; animation: fadeIn 0.15s; }
-  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.2s cubic-bezier(.34,1.56,.64,1); }
-  .modal-wide { max-width: 760px; }
-  .modal-header { padding: 22px 24px 0; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; }
-  .modal-body { padding: 0 24px 24px; }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  @keyframes slideUp { from{opacity:0;transform:translateY(20px) scale(0.97)} to{opacity:1;transform:none} }
-
-  .login-page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); position:relative; overflow:hidden; }
-  .login-bg { position:absolute; inset:0; pointer-events:none; }
-  .login-blob { position:absolute; border-radius:50%; filter:blur(90px); opacity:0.18; }
-  .login-error { background:rgba(240,96,96,0.1); border:1px solid rgba(240,96,96,0.3); border-radius:var(--radius-sm); padding:10px 14px; font-size:13px; color:var(--red); margin-bottom:16px; }
-  .login-card { background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:44px 40px; width:100%; max-width:420px; position:relative; z-index:1; animation:slideUp 0.4s cubic-bezier(.34,1.56,.64,1); }
-  .login-logo { display:flex; align-items:center; gap:14px; margin-bottom:28px; }
-  .login-logo-img { width:56px; height:56px; border-radius:12px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  .login-logo-img img { width:100%; height:100%; object-fit:contain; }
-  .login-logo-text h1 { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:3px; color:var(--accent); line-height:1; }
-  .login-logo-text p { font-size:12px; color:var(--text2); margin-top:2px; }
-
-  .toast-container { position:fixed; bottom:24px; right:24px; z-index:999; display:flex; flex-direction:column; gap:8px; }
-  .toast { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:12px 16px; font-size:13px; min-width:260px; display:flex; align-items:center; gap:10px; animation:slideUp 0.25s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 32px rgba(0,0,0,0.5); }
-  .toast-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-  .toast.success .toast-dot { background:var(--green); }
-  .toast.error .toast-dot { background:var(--red); }
-  .toast.info .toast-dot { background:var(--blue); }
-
-  .usuarios-grid { display: grid; gap: 12px; }
-  .usuario-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-  .usuario-card-top { display: flex; align-items: center; gap: 12px; }
-  .usuario-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
-  .usuario-info { flex: 1; min-width: 0; }
-  .usuario-nome { font-size: 14px; font-weight: 700; color: var(--text); word-break: break-word; }
-  .usuario-email { font-size: 12px; color: var(--text2); word-break: break-all; margin-top: 2px; }
-  .usuario-role { font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 99px; }
-  .role-dono { background: rgba(232,184,75,0.15); color: var(--accent); }
-  .role-func { background: rgba(77,166,255,0.12); color: var(--blue); }
-
-  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99; }
-  .sidebar-overlay.visible { display:block; }
-  .empty-state { padding:52px; text-align:center; color:var(--text2); }
-  .empty-icon { font-size:42px; margin-bottom:12px; opacity:0.45; }
-  .empty-text { font-size:14px; }
-  .mobile-navbar { display: none; position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); z-index: 101; align-items: center; padding: 0 16px; gap: 12px; }
-  .mobile-menu-btn { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 8px; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
-  .mobile-logo { display: flex; align-items: center; gap: 10px; flex: 1; }
-  .mobile-logo-img { width: 38px; height: 38px; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
-  .mobile-logo-img img { width: 100%; height: 100%; object-fit: contain; }
-  .mobile-logo-name { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--accent); line-height: 1; }
-  .mobile-menu-btn svg { width:18px; height:18px; display:block; }
-  .confirm-dialog { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:26px; max-width:420px; width:100%; }
-  .confirm-title { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:1px; margin-bottom:10px; }
-  .confirm-text { font-size:13px; color:var(--text2); margin-bottom:22px; }
-  .confirm-actions { display:flex; gap:10px; justify-content:flex-end; }
-  .product-thumb { width:36px; height:36px; border-radius:8px; background:var(--surface3); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
-
-  .tags-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-  .tag-opt { padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); background: var(--surface2); color: var(--text2); transition: all 0.15s; user-select: none; }
-  .tag-opt:hover { border-color: var(--accent); color: var(--accent); }
-  .tag-opt.selected { background: rgba(232,184,75,0.15); border-color: var(--accent); color: var(--accent); }
-
-  .loading-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:var(--bg); }
-
-  /* Tela de abertura do app — fundo branco com a marca em destaque */
-  .splash { position:fixed; inset:0; z-index:999; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px; padding:32px; }
-  .splash-logo { width:min(62vw, 300px); height:auto; object-fit:contain; animation:splashIn 0.5s ease-out both; }
-  .splash-nome { font-family:'Bebas Neue', sans-serif; font-size:clamp(30px, 8vw, 46px); letter-spacing:4px; color:#111; line-height:1; text-align:center; animation:splashIn 0.5s 0.1s ease-out both; }
-  .splash-nome span { color:var(--accent); }
-  .splash-spinner { width:26px; height:26px; border:3px solid rgba(0,0,0,0.1); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
-  @keyframes splashIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-  .spinner { width:32px; height:32px; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
-  @keyframes spin { to{transform:rotate(360deg)} }
-
-  .produto-pai-row td { background: var(--surface); }
-  .produto-pai-row:hover td { background: rgba(232,184,75,0.03) !important; }
-  .produto-expand-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--text2); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s; white-space: nowrap; }
-  .produto-expand-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .variante-row td { background: rgba(255,255,255,0.015); padding-top: 9px; padding-bottom: 9px; }
-  .variante-row:hover td { background: rgba(255,255,255,0.03) !important; }
-  .variante-indent { padding-left: 52px !important; }
-  .variante-label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text2); }
-  .variante-label-badge { padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; background: rgba(77,166,255,0.1); color: var(--blue); border: 1px solid rgba(77,166,255,0.2); }
-
-  .variante-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-  .variante-item { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .variante-item-label { font-size: 13px; font-weight: 700; color: var(--text); flex: 1; min-width: 140px; }
-  .variante-item-estoque { font-size: 12px; color: var(--text2); }
-  .add-variante-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
-
-  .variante-grade-section { margin-top: 14px; }
-  .variante-grade-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
-  .variante-grade-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .variante-chip { padding: 7px 16px; border-radius: 99px; font-size: 13px; font-weight: 700; border: 1.5px solid var(--border2); background: var(--surface2); color: var(--text2); cursor: pointer; transition: all 0.15s; user-select: none; position: relative; }
-  .variante-chip:hover:not(.disabled) { border-color: var(--accent); color: var(--accent); }
-  .variante-chip.active { border-color: var(--accent); background: rgba(232,184,75,0.12); color: var(--accent); }
-  .variante-chip.active-cor { border-color: var(--blue); background: rgba(77,166,255,0.12); color: var(--blue); }
-  .variante-chip.disabled { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
-  .variante-chip-estoque { position: absolute; top: -6px; right: -4px; font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 99px; background: var(--yellow); color: #000; line-height: 1.4; }
-  .variante-chip-estoque.zero { background: var(--red); color: #fff; }
-  .variante-resultado { margin-top: 12px; padding: 10px 14px; border-radius: var(--radius-sm); background: rgba(232,184,75,0.07); border: 1px solid rgba(232,184,75,0.25); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  .variante-resultado-nome { font-size: 13px; font-weight: 700; color: var(--accent); }
-
-  .info-box { background: rgba(77,166,255,0.07); border: 1px solid rgba(77,166,255,0.2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--text2); }
-  .warn-box { background: rgba(245,166,35,0.07); border: 1px solid rgba(245,166,35,0.25); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--yellow); }
-
-  .compra-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 16px 18px; display: flex; align-items: flex-start; gap: 14px; transition: box-shadow 0.15s; }
-  .compra-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.25); }
-  .compra-card-info { flex: 1; min-width: 0; }
-  .compra-card-fornecedor { font-size: 14px; font-weight: 700; color: var(--text); }
-  .compra-card-valor { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--accent); margin-top: 2px; }
-  .compra-card-meta { font-size: 12px; color: var(--text2); margin-top: 4px; }
-  .compra-card-obs { font-size: 12px; color: var(--text2); margin-top: 6px; font-style: italic; border-left: 2px solid var(--border2); padding-left: 8px; }
-  .compra-card-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
-  .compras-pendentes-list { display: flex; flex-direction: column; gap: 10px; }
-
-  /* ── CARRINHO DE COMPRAS ── */
-  .cart-section { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 18px; margin-bottom: 20px; }
-  .cart-section-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px; color: var(--text2); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-  .cart-add-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: flex-end; }
-  .cart-item-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-top: 8px; }
-  .cart-item-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
-  .cart-item-qty { font-size: 12px; color: var(--text2); padding: 3px 10px; background: var(--surface2); border-radius: 99px; }
-  .cart-item-price { font-size: 13px; font-weight: 700; color: var(--accent); min-width: 90px; text-align: right; }
-  .cart-total-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .cart-total-label { font-size: 13px; color: var(--text2); font-weight: 700; }
-  .cart-total-value { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--accent); }
-  .cart-empty { text-align: center; padding: 22px; color: var(--text2); font-size: 13px; }
-
-  @media (max-width: 1200px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .page { padding: 28px 28px; }
-  }
-  @media (max-width: 768px) {
-    .sidebar { position:fixed; left:0; top:0; bottom:0; transform:translateX(-100%); }
-    .sidebar.open { transform:translateX(0); box-shadow:8px 0 40px rgba(0,0,0,0.5); }
-    .sidebar-overlay { display:block; }
-    .mobile-navbar { display: flex; }
-    .page { padding:20px 16px; padding-top:80px; }
-    .stats-grid { grid-template-columns: 1fr; }
-    .stats-grid-3 { grid-template-columns: 1fr; }
-    .form-grid-2, .form-grid-3 { grid-template-columns:1fr; }
-    .cart-add-row { grid-template-columns: 1fr 1fr; }
-    .stat-value { font-size: 42px; }
-  }
-  @media (max-width: 420px) {
-    .stat-value { font-size: 36px; }
-  }
-`;
-
-// ─────────────────────────────────────────────
-// ICONS
-// ─────────────────────────────────────────────
-const Icon = ({ name, size = 16 }) => {
-  const icons = {
-    dashboard: <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/>,
-    sell: <><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" fill="currentColor"/></>,
-    expense: <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" fill="currentColor"/>,
-    stock: <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z" fill="currentColor"/>,
-    clients: <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/>,
-    categories: <path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5S15.01 22 17.5 22s4.5-2.01 4.5-4.5S19.99 13 17.5 13zm0 7c-1.38 0-2.5-1.12-2.5-2.5S16.12 15 17.5 15s2.5 1.12 2.5 2.5S18.88 20 17.5 20zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z" fill="currentColor"/>,
-    pdf: <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z" fill="currentColor"/>,
-    download: <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>,
-    trash: <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>,
-    edit: <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>,
-    plus: <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>,
-    menu: <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/>,
-    close: <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>,
-    lock: <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z" fill="currentColor"/>,
-    eye: <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>,
-    eyeoff: <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="currentColor"/>,
-    warn: <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill="currentColor"/>,
-    check: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>,
-    sync: <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="currentColor"/>,
-    chevronDown: <path d="M7 10l5 5 5-5z" fill="currentColor"/>,
-    chevronRight: <path d="M10 17l5-5-5-5v10z" fill="currentColor"/>,
-    variant: <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z" fill="currentColor"/>,
-    cart: <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96C5 16.1 6.9 18 9 18h12v-2H9.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 23.43 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" fill="currentColor"/>,
-    inbox: <path d="M19 3H4.99C3.89 3 3 3.9 3 5L3 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.34 3-3 3s-3-1.34-3-3H4.99V5H19v10z" fill="currentColor"/>,
-    handshake: <path d="M11 5L6 9H2v6h4l5 4V5zm7.54 1.46a7 7 0 0 1 0 9.9l-1.41-1.41a5 5 0 0 0 0-7.07l1.41-1.42zM15.71 8.3a3 3 0 0 1 0 4.24l-1.42-1.42a1 1 0 0 0 0-1.41L15.71 8.3z" fill="currentColor"/>,
-    balanco: <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="currentColor"/>,
-  };
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      {icons[name] || null}
-    </svg>
-  );
-};
-
-// ─────────────────────────────────────────────
-// TOAST
-// ─────────────────────────────────────────────
-let toastCount = 0;
-let setToastsGlobal = null;
-
-function useToasts() {
-  const [toasts, setToasts] = useState([]);
-  useEffect(() => { setToastsGlobal = setToasts; }, []);
-  return toasts;
-}
-
-function toast(msg, type = "success") {
-  if (!setToastsGlobal) return;
-  const id = ++toastCount;
-  setToastsGlobal(p => [...p, { id, msg, type }]);
-  setTimeout(() => setToastsGlobal(p => p.filter(t => t.id !== id)), 3500);
-}
-
-function ToastContainer() {
-  const toasts = useToasts();
-  return (
-    <div className="toast-container">
-      {toasts.map(t => (
-        <div key={t.id} className={`toast ${t.type}`}>
-          <div className="toast-dot" />
-          {t.msg}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// MODAL / CONFIRM
-// ─────────────────────────────────────────────
-function Modal({ open, onClose, title, children, wide }) {
-  if (!open) return null;
-  return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${wide ? "modal-wide" : ""}`}>
-        <div className="modal-header">
-          <span className="modal-title">{title}</span>
-          <button className="btn-icon" onClick={onClose}><Icon name="close" /></button>
-        </div>
-        <div className="modal-body">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function ConfirmDialog({ open, title, text, onConfirm, onCancel, danger }) {
-  if (!open) return null;
-  return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
-      <div className="confirm-dialog">
-        <div className="confirm-title">{title}</div>
-        <div className="confirm-text">{text}</div>
-        <div className="confirm-actions">
-          <button className="btn btn-secondary btn-sm" onClick={onCancel}>Cancelar</button>
-          <button className={`btn btn-sm ${danger ? "btn-danger" : "btn-primary"}`} onClick={onConfirm}>Confirmar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// LOGIN
-// ─────────────────────────────────────────────
 // ─────────────────────────────────────────────
 // SPLASH — tela de abertura do app
 // ─────────────────────────────────────────────
@@ -1976,8 +1476,13 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     if (!file.type.startsWith("image/")) return toast("Selecione um arquivo de imagem", "error");
     setEnviandoImagem(true);
     try {
-      const base64 = await lerImagemComoBase64(file);
-      set("imagemUrl", base64);
+      // Duas versões: a pequena vai no produto (aparece no card da vitrine) e a
+      // grande vai separada, para a peça abrir nítida em tela cheia no site.
+      const [miniatura, grande] = await Promise.all([
+        lerImagemComoBase64(file, 480, 0.75),
+        lerImagemComoBase64(file, 1100, 0.82),
+      ]);
+      setForm(p => ({ ...p, imagemUrl: miniatura, imagemGrande: grande }));
     } catch {
       toast("Não foi possível carregar essa imagem", "error");
     } finally {
@@ -1986,7 +1491,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   }
 
   function removerImagemSelecionada() {
-    setForm(p => ({ ...p, imagemUrl: "" }));
+    setForm(p => ({ ...p, imagemUrl: "", imagemGrande: "" }));
   }
 
   const produtos = dados.produtos || [];
@@ -2027,6 +1532,8 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     setSalvando(true);
     try {
       const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl: form.imagemUrl || "" };
+      // só mexe na foto grande se a imagem foi trocada ou removida nesta edição
+      if (form.imagemGrande !== undefined) d.imagemGrande = form.imagemGrande;
       if (editando) { await onAtualizar(editando, d); toast("Produto atualizado"); }
       else { await onAdicionar(d); toast("Produto adicionado"); }
       setModal(false);
@@ -3072,7 +2579,7 @@ const SLIDES_CARROSSEL = [
 ];
 
 function FotosSite() {
-  const [fotos, loadingFotos] = useCollection("siteFotos");
+  const [fotos, loadingFotos] = useCollection("siteFotos", FILTRO_FOTOS_SITE);
   const [enviando, setEnviando] = useState("");
   const [confirmRemover, setConfirmRemover] = useState(null);
 
@@ -3209,8 +2716,11 @@ const NAV_BASE = [
   { id: "categorias", label: "Categorias", icon: "categories", group: "Dados" },
   { id: "relatorio", label: "Relatório PDF", icon: "pdf", group: "Dados" },
 ];
+// Endereço da vitrine — se o domínio mudar, é só trocar aqui
+const SITE_URL = "https://fitmgwear-site.vercel.app/";
 const NAV_DONO = [
   { id: "fotosite", label: "Fotos do Site", icon: "eye", group: "Admin" },
+  { id: "versite", label: "Ver Site", icon: "external", group: "Admin", href: SITE_URL },
   { id: "usuarios", label: "Usuários", icon: "clients", group: "Admin" },
 ];
 
@@ -3230,9 +2740,16 @@ function Sidebar({ page, onNavigate, onLogout, open, onClose, perfil, isDono }) 
             <div key={g}>
               <div className="nav-label">{g}</div>
               {navItems.filter(i => i.group === g).map(item => (
-                <div key={item.id} className={`nav-item ${page === item.id ? "active" : ""}`} onClick={() => { onNavigate(item.id); onClose(); }}>
-                  <Icon name={item.icon} size={16} />{item.label}
-                </div>
+                item.href ? (
+                  // link externo (vitrine) — abre em outra aba, não troca a página do ERP
+                  <a key={item.id} className="nav-item" href={item.href} target="_blank" rel="noopener noreferrer" onClick={onClose} style={{ textDecoration: "none" }}>
+                    <Icon name={item.icon} size={16} />{item.label}
+                  </a>
+                ) : (
+                  <div key={item.id} className={`nav-item ${page === item.id ? "active" : ""}`} onClick={() => { onNavigate(item.id); onClose(); }}>
+                    <Icon name={item.icon} size={16} />{item.label}
+                  </div>
+                )
               ))}
             </div>
           ))}
@@ -3268,18 +2785,25 @@ const CATEGORIAS_PADRAO = [
   { id: "c6", nome: "Utilidades", tipo: "despesa", cor: "#22d3ee" },
 ];
 
-function useCollection(colName) {
+// `filtros` deve ser uma constante de módulo (não recriar a cada render,
+// senão a inscrição no Firestore é refeita a cada atualização de tela)
+function useCollection(colName, filtros) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, colName), snap => {
+    const alvo = filtros ? query(collection(db, colName), ...filtros) : collection(db, colName);
+    const unsub = onSnapshot(alvo, snap => {
       setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
     return unsub;
-  }, [colName]);
+  }, [colName, filtros]);
   return [items, loading];
 }
+
+// A tela "Fotos do Site" só cuida do carrossel, da galeria e da foto da dona —
+// as fotos grandes dos produtos moram na mesma coleção e ficam de fora daqui.
+const FILTRO_FOTOS_SITE = [where("tipo", "in", ["carrossel", "galeria", "dona"])];
 
 // ─────────────────────────────────────────────
 // MAIN APP
@@ -3487,13 +3011,35 @@ export default function App() {
   async function removerCategoria(id) { await deleteDoc(doc(db, "categorias", id)); }
 
   // Produtos
-  async function adicionarProduto(p) { const id = uid(); await setDoc(doc(db, "produtos", id), { ...p, id, dataCriacao: new Date().toISOString() }); }
+  // A foto grande fica fora do produto (em siteFotos, id "prod_<id>") porque a
+  // vitrine baixa TODOS os produtos de uma vez — só a miniatura pode viajar junto.
+  // O site busca a versão grande só quando o cliente abre a peça em tela cheia.
+  async function salvarFotoGrande(produtoId, imagemGrande) {
+    const ref = doc(db, "siteFotos", `prod_${produtoId}`);
+    if (imagemGrande) {
+      await setDoc(ref, { id: `prod_${produtoId}`, tipo: "produto", produtoId, imagem: imagemGrande, criadoEm: new Date().toISOString() });
+    } else {
+      await deleteDoc(ref).catch(() => {});
+    }
+  }
+  async function adicionarProduto(p) {
+    const { imagemGrande, ...dados } = p;
+    const id = uid();
+    await setDoc(doc(db, "produtos", id), { ...dados, id, dataCriacao: new Date().toISOString() });
+    if (imagemGrande !== undefined) await salvarFotoGrande(id, imagemGrande);
+  }
   async function removerProduto(id) {
     await deleteDoc(doc(db, "produtos", id));
     const vars = variantesProduto.filter(v => v.produtoPaiId === id);
     for (const v of vars) await deleteDoc(doc(db, "variantesProduto", v.id));
+    await deleteDoc(doc(db, "siteFotos", `prod_${id}`)).catch(() => {});
   }
-  async function atualizarProduto(id, upd) { const p = produtos.find(x => x.id === id); if (p) await setDoc(doc(db, "produtos", id), { ...p, ...upd }); }
+  async function atualizarProduto(id, upd) {
+    const { imagemGrande, ...dados } = upd;
+    const p = produtos.find(x => x.id === id);
+    if (p) await setDoc(doc(db, "produtos", id), { ...p, ...dados });
+    if (imagemGrande !== undefined) await salvarFotoGrande(id, imagemGrande);
+  }
 
   // Variantes
   async function adicionarVariante(v) { const id = uid(); await setDoc(doc(db, "variantesProduto", id), { ...v, id, criadoEm: new Date().toISOString() }); }

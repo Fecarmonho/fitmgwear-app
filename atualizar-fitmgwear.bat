@@ -20,7 +20,22 @@ if "%msg%"=="" set msg=feat: atualizacao do sistema
 git commit -m "%msg%"
 
 echo [3/3] Enviando para o GitHub...
-git push origin main --force
+git push origin main
+if errorlevel 1 (
+  echo.
+  echo  ========================================
+  echo   ATENCAO: o envio foi recusado.
+  echo   Isso acontece quando existe alteracao
+  echo   no GitHub que nao esta aqui no PC
+  echo   (por exemplo, edicao feita pelo site).
+  echo.
+  echo   Rode:  git pull --rebase origin main
+  echo   e depois rode este arquivo de novo.
+  echo  ========================================
+  echo.
+  pause
+  exit /b 1
+)
 
 echo.
 echo  ========================================
