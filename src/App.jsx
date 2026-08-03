@@ -1476,12 +1476,17 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     if (!file.type.startsWith("image/")) return toast("Selecione um arquivo de imagem", "error");
     setEnviandoImagem(true);
     try {
-      // Duas versões: a pequena vai no produto (aparece no card da vitrine) e a
-      // grande vai separada, para a peça abrir nítida em tela cheia no site.
-      const [miniatura, grande] = await Promise.all([
-        lerImagemComoBase64(file, 480, 0.75),
-        lerImagemComoBase64(file, 1100, 0.82),
-      ]);
+      // Duas versões da foto. Tela de celular desenha 2 a 3 pixels para cada
+      // ponto de tamanho aparente, então as duas precisam de folga de resolução:
+      //  - card da vitrine: aparece com ~180px no celular e ~380px no
+      //    computador; 900px deixa nítido (custa ~80 a 150 KB por peça)
+      //  - tela cheia: 1600px, para a foto ampliada não borrar
+      const miniatura = await lerImagemComoBase64(file, 900, 0.7);
+      let grande = await lerImagemComoBase64(file, 1600, 0.85);
+      // um documento do Firestore não passa de 1 MB; se a foto ficar perto
+      // disso, salva uma versão um pouco menor em vez de falhar ao gravar
+      if (grande.length > 700000) grande = await lerImagemComoBase64(file, 1300, 0.8);
+      if (grande.length > 900000) grande = await lerImagemComoBase64(file, 1100, 0.75);
       setForm(p => ({ ...p, imagemUrl: miniatura, imagemGrande: grande }));
     } catch {
       toast("Não foi possível carregar essa imagem", "error");
@@ -1529,6 +1534,8 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     e.preventDefault();
     if (!form.nome.trim()) return toast("Preencha o nome", "error");
     if (!form.precoVenda || parseFloat(form.precoVenda) <= 0) return toast("Preço de venda inválido", "error");
+    // salvar durante o preparo da foto gravava a peça sem imagem
+    if (enviandoImagem) return toast("Espere a foto terminar de carregar", "error");
     setSalvando(true);
     try {
       const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl: form.imagemUrl || "" };
@@ -1689,7 +1696,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
           </div>
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={salvando}>{salvando ? "Salvando..." : (editando ? "Salvar" : "Adicionar")}</button>
+            <button type="submit" className="btn btn-primary" disabled={salvando || enviandoImagem}>{salvando ? "Salvando..." : enviandoImagem ? "Preparando foto..." : (editando ? "Salvar" : "Adicionar")}</button>
           </div>
         </form>
       </Modal>
