@@ -1662,6 +1662,10 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                   {form.imagemUrl && <button type="button" className="btn btn-sm btn-secondary" style={{ alignSelf: "flex-start" }} onClick={removerImagemSelecionada}>Remover foto</button>}
                 </div>
               </div>
+              <div style={{ fontSize: 11.5, color: "var(--text2)", marginTop: 8, lineHeight: 1.5 }}>
+                Envie a foto no tamanho original. Peças cadastradas antes desta versão
+                precisam ter a foto enviada de novo para abrirem nítidas em tela cheia no site.
+              </div>
             </div>
             <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Nome *</label><input className="input" value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">SKU</label><input className="input" value={form.sku} onChange={e => set("sku", e.target.value)} /></div>
