@@ -222,6 +222,18 @@ export const CSS = `
   .spinner { width:32px; height:32px; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
   @keyframes spin { to{transform:rotate(360deg)} }
 
+  /* Fotos do produto (a primeira e a capa da vitrine) */
+  .fotos-strip { display:flex; gap:10px; flex-wrap:wrap; }
+  .foto-slot { position:relative; width:78px; height:104px; border-radius:8px; overflow:hidden; border:1px solid var(--border2); background:var(--surface2); flex-shrink:0; }
+  .foto-slot.capa { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .foto-slot img { width:100%; height:100%; object-fit:cover; display:block; }
+  .foto-slot.vazio { display:flex; align-items:center; justify-content:center; font-size:26px; color:var(--text2); }
+  .foto-capa-tag { position:absolute; top:0; left:0; background:var(--accent); color:#111; font-size:9px; font-weight:800; letter-spacing:0.5px; padding:2px 6px; border-bottom-right-radius:6px; }
+  .foto-slot-acoes { position:absolute; bottom:0; left:0; right:0; display:flex; justify-content:center; gap:4px; padding:4px; background:linear-gradient(transparent, rgba(0,0,0,0.65)); }
+  .foto-slot-acoes button { border:none; background:rgba(255,255,255,0.9); color:#111; width:24px; height:24px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+  .foto-slot-acoes button:hover { background:var(--accent); }
+  .foto-slot-acoes button.danger:hover { background:var(--red); color:#fff; }
+
   .produto-pai-row td { background: var(--surface); }
   .produto-pai-row:hover td { background: rgba(232,184,75,0.03) !important; }
   .produto-expand-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; padding: 4px 8px; cursor: pointer; color: var(--text2); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s; white-space: nowrap; }

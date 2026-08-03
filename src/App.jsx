@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import logoImg from "./logo.png";
 
-import { collection, query, where, doc, onSnapshot, setDoc, deleteDoc, getDocs } from "firebase/firestore";
+import { collection, query, where, doc, onSnapshot, setDoc, deleteDoc, getDocs, getDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
 import { db, auth } from "./firebase.js";
@@ -11,6 +11,24 @@ import { Icon } from "./components/Icon.jsx";
 import { toast } from "./toast.js";
 import { ToastContainer } from "./components/Toast.jsx";
 import { Modal, ConfirmDialog } from "./components/Modal.jsx";
+
+// ─────────────────────────────────────────────
+// FOTOS DE PRODUTO
+// ─────────────────────────────────────────────
+// A capa mora no próprio produto (imagemUrl, 900px) porque a vitrine baixa
+// todos os produtos de uma vez. O resto fica em siteFotos e o site busca só
+// quando precisa:
+//   prod_<id>             → capa em alta (1600px)
+//   prodmini_<id>         → { fotos: [{fid, mini}] } das fotos 2 em diante
+//   prodgrande_<id>_<fid> → foto 2 em diante, em alta
+const MAX_FOTOS_PRODUTO = 6;
+const FID_CAPA = "capa";
+
+async function lerMinisProduto(produtoId) {
+  const snap = await getDoc(doc(db, "siteFotos", `prodmini_${produtoId}`));
+  if (!snap.exists()) return [];
+  return (snap.data().fotos || []).filter(f => f && f.fid && f.mini);
+}
 
 // ─────────────────────────────────────────────
 // SPLASH — tela de abertura do app
@@ -1468,26 +1486,38 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   const [editandoVariante, setEditandoVariante] = useState(null);
   const [enviandoImagem, setEnviandoImagem] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  // fotos da peça em ordem — a primeira é a capa (aparece no card da vitrine).
+  // Cada item: { fid, mini, grande? } — "grande" só existe em foto recém-enviada
+  const [fotos, setFotos] = useState([]);
+  const [fotosRemovidas, setFotosRemovidas] = useState([]);
+  const [carregandoFotos, setCarregandoFotos] = useState(false);
 
   async function handleImagemChange(e) {
-    const file = e.target.files && e.target.files[0];
+    const arquivos = [...(e.target.files || [])];
     e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return toast("Selecione um arquivo de imagem", "error");
+    if (!arquivos.length) return;
+    const vagas = MAX_FOTOS_PRODUTO - fotos.length;
+    if (vagas <= 0) return toast(`Máximo de ${MAX_FOTOS_PRODUTO} fotos por peça`, "error");
+    const selecionados = arquivos.slice(0, vagas);
+    if (arquivos.length > vagas) toast(`Só cabiam mais ${vagas} foto(s); o resto foi ignorado`, "error");
+
     setEnviandoImagem(true);
     try {
-      // Duas versões da foto. Tela de celular desenha 2 a 3 pixels para cada
-      // ponto de tamanho aparente, então as duas precisam de folga de resolução:
-      //  - card da vitrine: aparece com ~180px no celular e ~380px no
-      //    computador; 900px deixa nítido (custa ~80 a 150 KB por peça)
-      //  - tela cheia: 1600px, para a foto ampliada não borrar
-      const miniatura = await lerImagemComoBase64(file, 900, 0.7);
-      let grande = await lerImagemComoBase64(file, 1600, 0.85);
-      // um documento do Firestore não passa de 1 MB; se a foto ficar perto
-      // disso, salva uma versão um pouco menor em vez de falhar ao gravar
-      if (grande.length > 700000) grande = await lerImagemComoBase64(file, 1300, 0.8);
-      if (grande.length > 900000) grande = await lerImagemComoBase64(file, 1100, 0.75);
-      setForm(p => ({ ...p, imagemUrl: miniatura, imagemGrande: grande }));
+      for (const file of selecionados) {
+        if (!file.type.startsWith("image/")) { toast("Ignorei um arquivo que não é imagem", "error"); continue; }
+        // Duas versões da foto. Tela de celular desenha 2 a 3 pixels para cada
+        // ponto de tamanho aparente, então as duas precisam de folga de resolução:
+        //  - card da vitrine: aparece com ~180px no celular e ~380px no
+        //    computador; 900px deixa nítido (custa ~80 a 150 KB por peça)
+        //  - tela cheia: 1600px, para a foto ampliada não borrar
+        const mini = await lerImagemComoBase64(file, 900, 0.7);
+        let grande = await lerImagemComoBase64(file, 1600, 0.85);
+        // um documento do Firestore não passa de 1 MB; se a foto ficar perto
+        // disso, salva uma versão um pouco menor em vez de falhar ao gravar
+        if (grande.length > 700000) grande = await lerImagemComoBase64(file, 1300, 0.8);
+        if (grande.length > 900000) grande = await lerImagemComoBase64(file, 1100, 0.75);
+        setFotos(p => [...p, { fid: uid(), mini, grande }]);
+      }
     } catch {
       toast("Não foi possível carregar essa imagem", "error");
     } finally {
@@ -1495,8 +1525,16 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     }
   }
 
-  function removerImagemSelecionada() {
-    setForm(p => ({ ...p, imagemUrl: "", imagemGrande: "" }));
+  function removerFoto(fid) {
+    setFotos(p => p.filter(f => f.fid !== fid));
+    setFotosRemovidas(p => [...p, fid]);
+  }
+
+  function tornarCapa(fid) {
+    setFotos(p => {
+      const alvo = p.find(f => f.fid === fid);
+      return alvo ? [alvo, ...p.filter(f => f.fid !== fid)] : p;
+    });
   }
 
   const produtos = dados.produtos || [];
@@ -1521,9 +1559,27 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     return s + est * p.precoVenda;
   }, 0);
 
-  function abrirModal(p = null) {
-    if (p) { setEditando(p.id); setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "", imagemUrl: p.imagemUrl || "" }); }
-    else { setEditando(null); setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" }); }
+  async function abrirModal(p = null) {
+    setFotosRemovidas([]);
+    if (p) {
+      setEditando(p.id);
+      setForm({ nome: p.nome, descricao: p.descricao || "", precoCompra: p.precoCompra, precoVenda: p.precoVenda, quantidadeEstoque: p.quantidadeEstoque, quantidadeMinima: p.quantidadeMinima, sku: p.sku || "", imagemUrl: p.imagemUrl || "" });
+      // a capa já vem no produto; as demais moram num documento à parte
+      setFotos(p.imagemUrl ? [{ fid: FID_CAPA, mini: p.imagemUrl }] : []);
+      setModal(true);
+      if ((p.totalFotos || 1) > 1) {
+        setCarregandoFotos(true);
+        try {
+          const extras = await lerMinisProduto(p.id);
+          setFotos(f => [...f, ...extras]);
+        } catch { toast("Não consegui carregar as outras fotos", "error"); }
+        finally { setCarregandoFotos(false); }
+      }
+      return;
+    }
+    setEditando(null);
+    setForm({ nome: "", descricao: "", precoCompra: "", precoVenda: "", quantidadeEstoque: "", quantidadeMinima: "5", sku: "", imagemUrl: "" });
+    setFotos([]);
     setModal(true);
   }
 
@@ -1538,9 +1594,9 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
     if (enviandoImagem) return toast("Espere a foto terminar de carregar", "error");
     setSalvando(true);
     try {
-      const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl: form.imagemUrl || "" };
-      // só mexe na foto grande se a imagem foi trocada ou removida nesta edição
-      if (form.imagemGrande !== undefined) d.imagemGrande = form.imagemGrande;
+      const d = { nome: form.nome, descricao: form.descricao, precoCompra: parseFloat(form.precoCompra) || 0, precoVenda: parseFloat(form.precoVenda), quantidadeEstoque: parseInt(form.quantidadeEstoque) || 0, quantidadeMinima: parseInt(form.quantidadeMinima) || 5, sku: form.sku, imagemUrl: (fotos[0] && fotos[0].mini) || "" };
+      d.fotos = fotos;
+      d.fotosRemovidas = fotosRemovidas;
       if (editando) { await onAtualizar(editando, d); toast("Produto atualizado"); }
       else { await onAdicionar(d); toast("Produto adicionado"); }
       setModal(false);
@@ -1659,19 +1715,35 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
         <form onSubmit={submit}>
           <div className="form-grid form-grid-2">
             <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-              <label className="input-label">Foto do Produto</label>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 64, height: 64, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border2)", flexShrink: 0, background: "var(--surface2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {enviandoImagem ? <div className="spinner" style={{ width: 18, height: 18 }} /> : form.imagemUrl ? <img src={form.imagemUrl} alt="Prévia" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👕"}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <input type="file" accept="image/*" onChange={handleImagemChange} />
-                  {form.imagemUrl && <button type="button" className="btn btn-sm btn-secondary" style={{ alignSelf: "flex-start" }} onClick={removerImagemSelecionada}>Remover foto</button>}
-                </div>
+              <label className="input-label">Fotos do Produto — até {MAX_FOTOS_PRODUTO}</label>
+              <div className="fotos-strip">
+                {fotos.map((f, i) => (
+                  <div key={f.fid} className={`foto-slot ${i === 0 ? "capa" : ""}`}>
+                    <img src={f.mini} alt={`Foto ${i + 1}`} />
+                    {i === 0 && <span className="foto-capa-tag">Capa</span>}
+                    <div className="foto-slot-acoes">
+                      {i !== 0 && (
+                        <button type="button" title="Usar como capa" onClick={() => tornarCapa(f.fid)}><Icon name="check" size={13} /></button>
+                      )}
+                      <button type="button" title="Remover foto" className="danger" onClick={() => removerFoto(f.fid)}><Icon name="trash" size={13} /></button>
+                    </div>
+                  </div>
+                ))}
+                {(enviandoImagem || carregandoFotos) && (
+                  <div className="foto-slot vazio"><div className="spinner" style={{ width: 18, height: 18 }} /></div>
+                )}
+                {fotos.length === 0 && !enviandoImagem && !carregandoFotos && (
+                  <div className="foto-slot vazio">👕</div>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                <input type="file" accept="image/*" multiple onChange={handleImagemChange} disabled={fotos.length >= MAX_FOTOS_PRODUTO} />
+                <span style={{ fontSize: 11.5, color: "var(--text2)" }}>{fotos.length} de {MAX_FOTOS_PRODUTO}</span>
               </div>
               <div style={{ fontSize: 11.5, color: "var(--text2)", marginTop: 8, lineHeight: 1.5 }}>
-                Envie a foto no tamanho original. Peças cadastradas antes desta versão
-                precisam ter a foto enviada de novo para abrirem nítidas em tela cheia no site.
+                A primeira foto é a capa (aparece no card da vitrine); com mais de uma, o
+                cliente passa de foto direto no card. Envie no tamanho original — peças
+                cadastradas antes desta versão precisam ter a foto enviada de novo.
               </div>
             </div>
             <div className="input-group" style={{ gridColumn: "1 / -1" }}><label className="input-label">Nome *</label><input className="input" value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
@@ -3025,31 +3097,72 @@ export default function App() {
   // A foto grande fica fora do produto (em siteFotos, id "prod_<id>") porque a
   // vitrine baixa TODOS os produtos de uma vez — só a miniatura pode viajar junto.
   // O site busca a versão grande só quando o cliente abre a peça em tela cheia.
-  async function salvarFotoGrande(produtoId, imagemGrande) {
-    const ref = doc(db, "siteFotos", `prod_${produtoId}`);
-    if (imagemGrande) {
-      await setDoc(ref, { id: `prod_${produtoId}`, tipo: "produto", produtoId, imagem: imagemGrande, criadoEm: new Date().toISOString() });
+  const refCapa = (id) => doc(db, "siteFotos", `prod_${id}`);
+  const refMinis = (id) => doc(db, "siteFotos", `prodmini_${id}`);
+  const refGrande = (id, fid) => doc(db, "siteFotos", `prodgrande_${id}_${fid}`);
+
+  async function salvarFotosProduto(produtoId, fotos, fotosRemovidas = []) {
+    const capa = fotos[0];
+    const extras = fotos.slice(1);
+    const agora = new Date().toISOString();
+
+    // Capa em alta
+    if (!capa) {
+      await deleteDoc(refCapa(produtoId)).catch(() => {});
+    } else if (capa.grande) {
+      await setDoc(refCapa(produtoId), { id: `prod_${produtoId}`, tipo: "produto", produtoId, imagem: capa.grande, criadoEm: agora });
+    } else if (capa.fid !== FID_CAPA) {
+      // uma foto que já estava salva virou capa: traz a versão grande dela
+      const snap = await getDoc(refGrande(produtoId, capa.fid));
+      if (snap.exists()) await setDoc(refCapa(produtoId), { id: `prod_${produtoId}`, tipo: "produto", produtoId, imagem: snap.data().imagem, criadoEm: agora });
+    }
+
+    // Versão em alta das demais fotos
+    for (const f of extras) {
+      if (f.grande) {
+        await setDoc(refGrande(produtoId, f.fid), { tipo: "produtoGrande", produtoId, fid: f.fid, imagem: f.grande, criadoEm: agora });
+      } else if (f.fid === FID_CAPA) {
+        // a antiga capa deixou de ser capa: a versão grande dela muda de lugar
+        const snap = await getDoc(refCapa(produtoId));
+        if (snap.exists()) await setDoc(refGrande(produtoId, FID_CAPA), { tipo: "produtoGrande", produtoId, fid: FID_CAPA, imagem: snap.data().imagem, criadoEm: agora });
+      }
+    }
+
+    // Índice das miniaturas — é o que o card da vitrine busca para passar de foto
+    if (extras.length) {
+      await setDoc(refMinis(produtoId), { tipo: "produtoMinis", produtoId, fotos: extras.map(f => ({ fid: f.fid, mini: f.mini })), criadoEm: agora });
     } else {
-      await deleteDoc(ref).catch(() => {});
+      await deleteDoc(refMinis(produtoId)).catch(() => {});
+    }
+
+    for (const fid of fotosRemovidas) {
+      if (fotos.some(f => f.fid === fid)) continue;
+      await deleteDoc(refGrande(produtoId, fid)).catch(() => {});
     }
   }
+
   async function adicionarProduto(p) {
-    const { imagemGrande, ...dados } = p;
+    const { fotos = [], fotosRemovidas = [], ...dados } = p;
     const id = uid();
-    await setDoc(doc(db, "produtos", id), { ...dados, id, dataCriacao: new Date().toISOString() });
-    if (imagemGrande !== undefined) await salvarFotoGrande(id, imagemGrande);
+    await setDoc(doc(db, "produtos", id), { ...dados, id, totalFotos: fotos.length, dataCriacao: new Date().toISOString() });
+    await salvarFotosProduto(id, fotos, fotosRemovidas);
   }
   async function removerProduto(id) {
     await deleteDoc(doc(db, "produtos", id));
     const vars = variantesProduto.filter(v => v.produtoPaiId === id);
     for (const v of vars) await deleteDoc(doc(db, "variantesProduto", v.id));
-    await deleteDoc(doc(db, "siteFotos", `prod_${id}`)).catch(() => {});
+    // apaga também as fotos guardadas fora do produto
+    const minis = await lerMinisProduto(id).catch(() => []);
+    for (const f of minis) await deleteDoc(refGrande(id, f.fid)).catch(() => {});
+    await deleteDoc(refGrande(id, FID_CAPA)).catch(() => {});
+    await deleteDoc(refMinis(id)).catch(() => {});
+    await deleteDoc(refCapa(id)).catch(() => {});
   }
   async function atualizarProduto(id, upd) {
-    const { imagemGrande, ...dados } = upd;
+    const { fotos, fotosRemovidas = [], ...dados } = upd;
     const p = produtos.find(x => x.id === id);
-    if (p) await setDoc(doc(db, "produtos", id), { ...p, ...dados });
-    if (imagemGrande !== undefined) await salvarFotoGrande(id, imagemGrande);
+    if (p) await setDoc(doc(db, "produtos", id), { ...p, ...dados, ...(fotos ? { totalFotos: fotos.length } : {}) });
+    if (fotos) await salvarFotosProduto(id, fotos, fotosRemovidas);
   }
 
   // Variantes
