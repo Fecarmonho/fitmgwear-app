@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import logoImg from "./logo.png";
 
-import { collection, query, where, doc, onSnapshot, setDoc, deleteDoc, getDocs, getDoc } from "firebase/firestore";
+import { collection, query, where, doc, onSnapshot, setDoc, updateDoc, deleteDoc, deleteField, getDocs, getDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { upload } from "@vercel/blob/client";
 
 import { db, auth } from "./firebase.js";
 import { CSS } from "./styles.js";
@@ -2661,6 +2662,9 @@ const SLIDES_CARROSSEL = [
   { ordem: 5, titulo: "Entrega todo Brasil" },
 ];
 
+const VIDEO_CARROSSEL_MAX_MB = 50;
+const TIPOS_VIDEO_ACEITOS = ["video/mp4", "video/webm", "video/quicktime"];
+
 function FotosSite() {
   const [fotos, loadingFotos] = useCollection("siteFotos", FILTRO_FOTOS_SITE);
   const [enviando, setEnviando] = useState("");
@@ -2693,6 +2697,41 @@ function FotosSite() {
     for (const file of files) await enviarFoto("galeria", 0, file, "galeria");
   }
 
+  // Vídeo do carrossel: vai direto do navegador pro Vercel Blob (não cabe
+  // como base64 no Firestore igual a foto) — a rota /api/upload-video só
+  // confere que quem está pedindo é a dona antes de liberar o envio.
+  async function enviarVideo(ordem, file, chave) {
+    if (!file) return;
+    if (!TIPOS_VIDEO_ACEITOS.includes(file.type)) return toast("Selecione um vídeo mp4, webm ou mov", "error");
+    if (file.size > VIDEO_CARROSSEL_MAX_MB * 1024 * 1024) return toast(`Vídeo muito grande — o máximo é ${VIDEO_CARROSSEL_MAX_MB}MB`, "error");
+    setEnviando(chave);
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload-video",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const existente = carrossel.find(f => f.ordem === ordem);
+      const id = existente ? existente.id : uid();
+      await setDoc(doc(db, "siteFotos", id), {
+        id, tipo: "carrossel", ordem, videoUrl: blob.url,
+        imagem: existente?.imagem || null,
+        criadoEm: existente?.criadoEm || new Date().toISOString(),
+      }, { merge: true });
+      toast("Vídeo do carrossel atualizado ✓");
+    } catch (err) {
+      toast("Erro ao enviar vídeo: " + (err.message || ""), "error");
+    } finally {
+      setEnviando("");
+    }
+  }
+
+  async function removerVideo(fotoId) {
+    await updateDoc(doc(db, "siteFotos", fotoId), { videoUrl: deleteField() });
+    toast("Vídeo removido");
+  }
+
   function BotaoUpload({ chave, tipo, ordem, temFoto, multiple }) {
     return (
       <>
@@ -2711,15 +2750,42 @@ function FotosSite() {
     );
   }
 
+  function BotaoUploadVideo({ chave, ordem, temVideo }) {
+    return (
+      <>
+        <input type="file" accept="video/mp4,video/webm,video/quicktime" style={{ display: "none" }} id={`sitevideo-${chave}`}
+          onChange={e => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) enviarVideo(ordem, file, chave);
+          }} />
+        <label htmlFor={`sitevideo-${chave}`} className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
+          {enviando === chave ? "Enviando..." : temVideo ? "Trocar vídeo" : "Vídeo"}
+        </label>
+      </>
+    );
+  }
+
   function Slot({ foto, chave, tipo, ordem, titulo, alturaThumb = 110 }) {
+    const carregando = enviando === chave || enviando === `${chave}-video`;
     return (
       <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ height: alturaThumb, borderRadius: 6, overflow: "hidden", background: "var(--surface3)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text2)", fontSize: 26 }}>
-          {enviando === chave ? <div className="spinner" style={{ width: 20, height: 20 }} /> : foto?.imagem ? <img src={foto.imagem} alt={titulo || "Foto do site"} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "📷"}
+          {carregando
+            ? <div className="spinner" style={{ width: 20, height: 20 }} />
+            : foto?.videoUrl
+              ? <video src={foto.videoUrl} muted loop autoPlay playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : foto?.imagem
+                ? <img src={foto.imagem} alt={titulo || "Foto do site"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : "📷"}
         </div>
         {titulo && <div style={{ fontSize: 11, color: "var(--text2)", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 700 }}>{titulo}</div>}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <BotaoUpload chave={chave} tipo={tipo} ordem={ordem} temFoto={!!foto} />
+          <BotaoUpload chave={chave} tipo={tipo} ordem={ordem} temFoto={!!foto?.imagem} />
+          {tipo === "carrossel" && <BotaoUploadVideo chave={`${chave}-video`} ordem={ordem} temVideo={!!foto?.videoUrl} />}
+          {tipo === "carrossel" && foto?.videoUrl && (
+            <button className="btn btn-secondary btn-sm" onClick={() => removerVideo(foto.id)}>Remover vídeo</button>
+          )}
           {foto && <button className="btn btn-danger btn-sm" onClick={() => setConfirmRemover(foto.id)}>Remover</button>}
         </div>
       </div>
@@ -2737,7 +2803,7 @@ function FotosSite() {
           <div className="card">
             <div className="card-header"><div className="card-title">Carrossel do Topo</div></div>
             <div className="card-body">
-              <p style={{ fontSize: 12.5, color: "var(--text2)", margin: "0 0 14px" }}>São 5 fotos grandes que passam no topo do site. O título de cada quadro indica a frase que aparece por cima da foto. Prefira fotos na horizontal e com boa luz.</p>
+              <p style={{ fontSize: 12.5, color: "var(--text2)", margin: "0 0 14px" }}>São 5 quadros grandes que passam no topo do site. O título de cada um indica a frase que aparece por cima. Prefira fotos na horizontal e com boa luz. Cada quadro também aceita um vídeo curto (mudo, em loop) no lugar da foto — até {VIDEO_CARROSSEL_MAX_MB}MB.</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
                 {SLIDES_CARROSSEL.map(s => (
                   <Slot key={s.ordem} foto={carrossel.find(f => f.ordem === s.ordem)} chave={`carrossel-${s.ordem}`} tipo="carrossel" ordem={s.ordem} titulo={`${s.ordem}. ${s.titulo}`} />
