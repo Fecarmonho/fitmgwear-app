@@ -1673,14 +1673,14 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
           {produtos.length === 0
             ? <div className="empty-state"><div className="empty-icon">📦</div><div className="empty-text">Nenhum produto cadastrado</div></div>
             : <table>
-              <thead><tr><th>Produto</th><th>SKU</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Margem</th><th></th></tr></thead>
+              <thead><tr><th>Produto</th><th>SKU</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Margem / Markup</th><th></th></tr></thead>
               <tbody>
                 {produtos.map(p => {
                   const vars = ordenarVariantes(variantesProduto.filter(v => v.produtoPaiId === p.id));
                   const temVars = vars.length > 0;
                   const estoqueTotal = temVars ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
                   const baixo = estoqueTotal <= p.quantidadeMinima;
-                  const { margem } = calcPreco(p.precoCompra, p.precoVenda);
+                  const { margem, markup } = calcPreco(p.precoCompra, p.precoVenda);
                   const expandido = expandidos[p.id];
                   return [
                     <tr key={p.id} className="produto-pai-row">
@@ -1695,7 +1695,14 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                           {temVars && <button className="produto-expand-btn" onClick={() => toggleExpand(p.id)}><Icon name={expandido ? "chevronDown" : "chevronRight"} size={12} />{vars.length} variante{vars.length !== 1 ? "s" : ""}</button>}
                         </div>
                       </td>
-                      <td><span className={`badge ${badgeMargem(margem)}`} title="Margem: lucro ÷ preço de venda">{margem === null ? "—" : `${margem.toFixed(0)}%`}</span></td>
+                      {/* margem em destaque (e o numero que decide o preco),
+                          markup logo abaixo como apoio */}
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
+                          <span className={`badge ${badgeMargem(margem)}`} title="Margem: lucro ÷ preço de venda">{margem === null ? "—" : `${margem.toFixed(0)}%`} margem</span>
+                          <span style={{ fontSize: 11, color: "var(--text2)", whiteSpace: "nowrap" }} title="Markup: lucro ÷ preço de compra">{markup === null ? "—" : `${markup.toFixed(0)}%`} markup</span>
+                        </div>
+                      </td>
                       <td>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button className="btn-icon" title="Gerenciar Variantes" onClick={() => { setModalVariantes(p); setNovaVariante({ label: "", estoque: "" }); setEditandoVariante(null); }} style={{ color: "var(--blue)", borderColor: "rgba(77,166,255,0.3)" }}><Icon name="variant" /></button>
