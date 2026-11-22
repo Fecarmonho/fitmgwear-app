@@ -7,7 +7,7 @@ import { upload } from "@vercel/blob/client";
 
 import { db, auth } from "./firebase.js";
 import { CSS } from "./styles.js";
-import { uid, lerImagemComoBase64, formatBRL, formatData, hojeLocal, ordenarVariantes, compararTamanhos } from "./utils.js";
+import { uid, lerImagemComoBase64, formatBRL, formatData, hojeLocal, ordenarVariantes, compararTamanhos, calcPreco, badgeMargem, coresMargem } from "./utils.js";
 import { Icon } from "./components/Icon.jsx";
 import { toast } from "./toast.js";
 import { ToastContainer } from "./components/Toast.jsx";
@@ -456,9 +456,11 @@ function RelatorioPDF({ dados }) {
     const linhasProd = produtos.map(p => {
       const vars = variantesProduto.filter(v => v.produtoPaiId === p.id);
       const estoqueTotal = vars.length > 0 ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
-      const margem = p.precoCompra > 0 ? ((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(0) : "—";
+      const { margem } = calcPreco(p.precoCompra, p.precoVenda);
+      const cor = coresMargem(margem);
+      const txtMargem = margem === null ? "—" : `${margem.toFixed(0)}%`;
       const baixo = estoqueTotal <= p.quantidadeMinima;
-      return `<tr style="background:${baixo ? "#fffbeb" : "#fff"}"><td style="font-weight:600">${p.nome}${p.sku ? `<div style="font-size:10px;color:#9ca3af">SKU: ${p.sku}</div>` : ""}</td><td style="text-align:center;font-weight:700;color:${baixo ? "#d97706" : "#16a34a"}">${estoqueTotal}</td><td style="text-align:right">${formatBRL(p.precoVenda)}</td><td style="text-align:center"><span style="padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:${margem !== "—" && parseInt(margem) > 30 ? "#dcfce7" : "#fef9c3"};color:${margem !== "—" && parseInt(margem) > 30 ? "#16a34a" : "#d97706"}">${margem}%</span></td></tr>`;
+      return `<tr style="background:${baixo ? "#fffbeb" : "#fff"}"><td style="font-weight:600">${p.nome}${p.sku ? `<div style="font-size:10px;color:#9ca3af">SKU: ${p.sku}</div>` : ""}</td><td style="text-align:center;font-weight:700;color:${baixo ? "#d97706" : "#16a34a"}">${estoqueTotal}</td><td style="text-align:right">${formatBRL(p.precoVenda)}</td><td style="text-align:center"><span style="padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:${cor.fundo};color:${cor.texto}">${txtMargem}</span></td></tr>`;
     }).join("");
 
     // ── Compras ──
@@ -772,7 +774,9 @@ function gerarBalancoPDF(produtos, variantesProduto) {
     const estoqueTotal = temVars ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
     const custoTotal = estoqueTotal * p.precoCompra;
     const valorVendaTotal = estoqueTotal * p.precoVenda;
-    const margem = p.precoCompra > 0 ? ((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(0) : "—";
+    const { margem } = calcPreco(p.precoCompra, p.precoVenda);
+    const corMargem = coresMargem(margem);
+    const txtMargem = margem === null ? "—" : `${margem.toFixed(0)}%`;
     const baixo = estoqueTotal <= p.quantidadeMinima;
 
     totalPecas += estoqueTotal;
@@ -792,14 +796,17 @@ function gerarBalancoPDF(produtos, variantesProduto) {
         <td style="text-align:right">${formatBRL(p.precoVenda)}</td>
         <td style="text-align:right;font-weight:600;color:#9333ea">${formatBRL(custoTotal)}</td>
         <td style="text-align:right;font-weight:600;color:#16a34a">${formatBRL(valorVendaTotal)}</td>
-        <td style="text-align:center"><span style="background:${margem !== "—" && parseInt(margem) > 30 ? "#dcfce7" : margem !== "—" && parseInt(margem) > 10 ? "#fef9c3" : "#fee2e2"};color:${margem !== "—" && parseInt(margem) > 30 ? "#16a34a" : margem !== "—" && parseInt(margem) > 10 ? "#d97706" : "#dc2626"};padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">${margem}%</span></td>
+        <td style="text-align:center"><span style="background:${corMargem.fundo};color:${corMargem.texto};padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">${txtMargem}</span></td>
       </tr>
       ${varLinhas}
     `;
   }).join("");
 
   const lucroEstoque = totalValorVenda - totalCustoEstoque;
-  const margemGeral = totalCustoEstoque > 0 ? ((lucroEstoque / totalCustoEstoque) * 100).toFixed(1) : "0.0";
+  const geral = calcPreco(totalCustoEstoque, totalValorVenda);
+  const margemGeral = geral.margem === null ? "0.0" : geral.margem.toFixed(1);
+  const markupGeral = geral.markup === null ? "—" : `${geral.markup.toFixed(1)}%`;
+  const corGeral = coresMargem(geral.margem);
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -860,7 +867,7 @@ function gerarBalancoPDF(produtos, variantesProduto) {
   </div>
 </div>
 
-<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+<div class="stats" style="grid-template-columns:repeat(3,1fr)">
   <div class="stat">
     <div class="stat-label">Lucro Potencial</div>
     <div class="stat-value ${lucroEstoque >= 0 ? "green" : "red"}">${formatBRL(lucroEstoque)}</div>
@@ -868,8 +875,13 @@ function gerarBalancoPDF(produtos, variantesProduto) {
   </div>
   <div class="stat">
     <div class="stat-label">Margem Geral</div>
-    <div class="stat-value ${parseFloat(margemGeral) > 20 ? "green" : parseFloat(margemGeral) > 5 ? "gold" : "red"}">${margemGeral}%</div>
-    <div class="stat-sub">margem média do estoque</div>
+    <div class="stat-value" style="color:${corGeral.texto}">${margemGeral}%</div>
+    <div class="stat-sub">lucro ÷ preço de venda</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Markup Geral</div>
+    <div class="stat-value gold">${markupGeral}</div>
+    <div class="stat-sub">lucro ÷ preço de compra</div>
   </div>
 </div>
 
@@ -897,7 +909,7 @@ ${produtos.length === 0 ? "<p style='color:#aaa;padding:20px 0'>Nenhum produto c
       <td></td>
       <td style="text-align:right;color:#7c3aed">${formatBRL(totalCustoEstoque)}</td>
       <td style="text-align:right;color:#16a34a">${formatBRL(totalValorVenda)}</td>
-      <td style="text-align:center;color:${lucroEstoque >= 0 ? "#16a34a" : "#dc2626"}">${margemGeral}%</td>
+      <td style="text-align:center;color:${corGeral.texto}">${margemGeral}%</td>
     </tr>
   </tbody>
 </table>
@@ -1284,7 +1296,7 @@ function CarrinhoVenda({ dados, onSalvar, onCancelar }) {
   const totalCarrinho = itens.reduce((s, i) => s + i.subtotal, 0);
   const totalCusto = itens.reduce((s, i) => s + i.custoUnit * i.quantidade, 0);
   const totalLucro = totalCarrinho - totalCusto;
-  const margemGeral = totalCusto > 0 ? (totalLucro / totalCusto * 100) : 0;
+  const { margem: margemCarrinho } = calcPreco(totalCusto, totalCarrinho);
 
   function removerItem(id) { setItens(p => p.filter(i => i.id !== id)); }
 
@@ -1328,7 +1340,7 @@ function CarrinhoVenda({ dados, onSalvar, onCancelar }) {
                 {totalCusto > 0 && (
                   <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 2 }}>
                     Lucro: <span style={{ color: totalLucro >= 0 ? "var(--green)" : "var(--red)", fontWeight: 700 }}>{formatBRL(totalLucro)}</span>
-                    <span className={`badge ${margemGeral > 30 ? "badge-green" : margemGeral > 10 ? "badge-gold" : "badge-red"}`} style={{ marginLeft: 8, fontSize: 11 }}>{margemGeral.toFixed(0)}%</span>
+                    <span className={`badge ${badgeMargem(margemCarrinho)}`} style={{ marginLeft: 8, fontSize: 11 }} title="Margem: lucro ÷ preço de venda">{margemCarrinho === null ? "—" : `${margemCarrinho.toFixed(0)}%`} margem</span>
                   </div>
                 )}
               </div>
@@ -1542,7 +1554,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
   const variantesProduto = dados.variantesProduto || [];
   const pc = parseFloat(form.precoCompra) || 0;
   const pv = parseFloat(form.precoVenda) || 0;
-  const margemForm = pc > 0 && pv > 0 ? ((pv - pc) / pc * 100) : null;
+  const precoForm = pc > 0 && pv > 0 ? calcPreco(pc, pv) : null;
 
   // Totais para exibição no cabeçalho
   const totalPecas = produtos.reduce((s, p) => {
@@ -1668,7 +1680,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                   const temVars = vars.length > 0;
                   const estoqueTotal = temVars ? vars.reduce((s, v) => s + (v.estoque || 0), 0) : p.quantidadeEstoque;
                   const baixo = estoqueTotal <= p.quantidadeMinima;
-                  const margem = p.precoCompra > 0 ? ((p.precoVenda - p.precoCompra) / p.precoCompra * 100) : 0;
+                  const { margem } = calcPreco(p.precoCompra, p.precoVenda);
                   const expandido = expandidos[p.id];
                   return [
                     <tr key={p.id} className="produto-pai-row">
@@ -1683,7 +1695,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                           {temVars && <button className="produto-expand-btn" onClick={() => toggleExpand(p.id)}><Icon name={expandido ? "chevronDown" : "chevronRight"} size={12} />{vars.length} variante{vars.length !== 1 ? "s" : ""}</button>}
                         </div>
                       </td>
-                      <td><span className={`badge ${margem > 30 ? "badge-green" : margem > 10 ? "badge-gold" : "badge-red"}`}>{margem.toFixed(0)}%</span></td>
+                      <td><span className={`badge ${badgeMargem(margem)}`} title="Margem: lucro ÷ preço de venda">{margem === null ? "—" : `${margem.toFixed(0)}%`}</span></td>
                       <td>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button className="btn-icon" title="Gerenciar Variantes" onClick={() => { setModalVariantes(p); setNovaVariante({ label: "", estoque: "" }); setEditandoVariante(null); }} style={{ color: "var(--blue)", borderColor: "rgba(77,166,255,0.3)" }}><Icon name="variant" /></button>
@@ -1752,15 +1764,23 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
             <div className="input-group"><label className="input-label">Descrição</label><input className="input" value={form.descricao} onChange={e => set("descricao", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">Preço de Compra</label><input className="input" type="number" step="0.01" min="0" value={form.precoCompra} onChange={e => set("precoCompra", e.target.value)} /></div>
             <div className="input-group"><label className="input-label">Preço de Venda *</label><input className="input" type="number" step="0.01" min="0" value={form.precoVenda} onChange={e => set("precoVenda", e.target.value)} /></div>
-            {margemForm !== null && (
+            {precoForm !== null && (
               <div style={{ gridColumn: "1 / -1" }}>
                 <div className="margem-preview">
                   <div className="margem-item"><span className="margem-item-label">Custo</span><span className="margem-item-value" style={{ color: "var(--red)" }}>{formatBRL(pc)}</span></div>
                   <div style={{ color: "var(--border2)", fontSize: 20 }}>→</div>
                   <div className="margem-item"><span className="margem-item-label">Venda</span><span className="margem-item-value" style={{ color: "var(--green)" }}>{formatBRL(pv)}</span></div>
                   <div style={{ color: "var(--border2)", fontSize: 20 }}>→</div>
-                  <div className="margem-item"><span className="margem-item-label">Lucro</span><span className="margem-item-value" style={{ color: pv >= pc ? "var(--green)" : "var(--red)" }}>{formatBRL(pv - pc)}</span></div>
-                  <div style={{ marginLeft: "auto" }}><span className={`badge ${margemForm > 30 ? "badge-green" : margemForm > 10 ? "badge-gold" : "badge-red"}`} style={{ fontSize: 14, padding: "5px 12px" }}>{margemForm.toFixed(1)}%</span></div>
+                  <div className="margem-item"><span className="margem-item-label">Lucro</span><span className="margem-item-value" style={{ color: precoForm.lucro >= 0 ? "var(--green)" : "var(--red)" }}>{formatBRL(precoForm.lucro)}</span></div>
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+                    <span className={`badge ${badgeMargem(precoForm.margem)}`} style={{ fontSize: 14, padding: "5px 12px" }}>{precoForm.margem.toFixed(1)}% margem</span>
+                    <span className="badge badge-gold" style={{ fontSize: 12, padding: "5px 10px", opacity: 0.85 }}>{precoForm.markup === null ? "—" : `${precoForm.markup.toFixed(1)}%`} markup</span>
+                  </div>
+                </div>
+                {/* a confusão entre os dois é o erro de precificação mais comum */}
+                <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 6, lineHeight: 1.5 }}>
+                  <strong>Margem</strong> = lucro ÷ preço de venda — é o que sobra de cada real que entra.{" "}
+                  <strong>Markup</strong> = lucro ÷ preço de compra — é quanto você multiplicou o custo.
                 </div>
               </div>
             )}

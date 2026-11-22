@@ -48,6 +48,52 @@ export function hojeLocal() {
 }
 
 // ─────────────────────────────────────────────
+// PRECIFICAÇÃO
+// ─────────────────────────────────────────────
+// Margem e markup NÃO são a mesma coisa, e trocar um pelo outro é o erro de
+// conta mais comum no varejo:
+//   margem = lucro ÷ preço de VENDA   → quanto sobra de cada real que entra
+//   markup = lucro ÷ preço de COMPRA  → por quanto o custo foi multiplicado
+// Ex.: custo 0,89 e venda 2,00 → lucro 1,11 → margem 55,5% / markup 124,7%.
+// Quem lê o markup achando que é margem imagina ganhar o dobro do que ganha.
+export function calcPreco(custo, venda) {
+  const c = Number(custo) || 0;
+  const v = Number(venda) || 0;
+  const lucro = v - c;
+  return {
+    lucro,
+    margem: v > 0 ? (lucro / v) * 100 : null,
+    markup: c > 0 ? (lucro / c) * 100 : null,
+  };
+}
+
+// Faixas usadas para colorir os indicadores de margem no app inteiro.
+// São referência de varejo de moda — ajuste aos números do seu negócio.
+export const FAIXAS_MARGEM = { boa: 50, media: 30 };
+
+export function faixaMargem(margem) {
+  if (margem === null || margem === undefined || Number.isNaN(margem)) return "neutra";
+  if (margem >= FAIXAS_MARGEM.boa) return "boa";
+  if (margem >= FAIXAS_MARGEM.media) return "media";
+  return "baixa";
+}
+
+// Classe de badge correspondente, para as telas em React
+export function badgeMargem(margem) {
+  const f = faixaMargem(margem);
+  return f === "boa" ? "badge-green" : f === "media" ? "badge-gold" : "badge-red";
+}
+
+// Cores cruas, para o HTML dos relatórios impressos
+export function coresMargem(margem) {
+  const f = faixaMargem(margem);
+  if (f === "boa") return { fundo: "#dcfce7", texto: "#16a34a" };
+  if (f === "media") return { fundo: "#fef9c3", texto: "#d97706" };
+  if (f === "baixa") return { fundo: "#fee2e2", texto: "#dc2626" };
+  return { fundo: "#f3f4f6", texto: "#9ca3af" };
+}
+
+// ─────────────────────────────────────────────
 // ORDENAÇÃO DE VARIANTES (Tamanho/Cor)
 // ─────────────────────────────────────────────
 export const ORDEM_TAMANHOS = ["PP", "P", "M", "G", "GG", "GG1", "GG2", "GG3", "XG", "XGG", "EG", "EGG", "EXG", "EXGG", "U", "UNICO", "ÚNICO"];
