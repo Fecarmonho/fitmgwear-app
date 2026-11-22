@@ -655,7 +655,7 @@ function RelatorioPDF({ dados }) {
     ${produtos.length === 0
       ? "<p style='color:#aaa;font-size:12px'>Nenhum produto cadastrado.</p>"
       : `<table>
-          <thead><tr><th>Produto</th><th style="text-align:center">Estoque</th><th style="text-align:right">Preço Venda</th><th style="text-align:center">Margem</th></tr></thead>
+          <thead><tr><th>Produto</th><th style="text-align:center">Estoque</th><th style="text-align:right">Preço Venda</th><th style="text-align:center">Lucro s/ venda</th></tr></thead>
           <tbody>${linhasProd}</tbody>
         </table>`
     }
@@ -874,14 +874,14 @@ function gerarBalancoPDF(produtos, variantesProduto) {
     <div class="stat-sub">venda − custo</div>
   </div>
   <div class="stat">
-    <div class="stat-label">Margem Geral</div>
+    <div class="stat-label">Lucro sobre a Venda</div>
     <div class="stat-value" style="color:${corGeral.texto}">${margemGeral}%</div>
-    <div class="stat-sub">lucro ÷ preço de venda</div>
+    <div class="stat-sub">do que entra, isto sobra</div>
   </div>
   <div class="stat">
-    <div class="stat-label">Markup Geral</div>
+    <div class="stat-label">Lucro sobre o Custo</div>
     <div class="stat-value gold">${markupGeral}</div>
-    <div class="stat-sub">lucro ÷ preço de compra</div>
+    <div class="stat-sub">quanto o custo foi multiplicado</div>
   </div>
 </div>
 
@@ -897,7 +897,7 @@ ${produtos.length === 0 ? "<p style='color:#aaa;padding:20px 0'>Nenhum produto c
       <th style="text-align:right">Pr. Venda</th>
       <th style="text-align:right">Custo Total</th>
       <th style="text-align:right">Valor Venda</th>
-      <th style="text-align:center">Margem</th>
+      <th style="text-align:center">Lucro s/ venda</th>
     </tr>
   </thead>
   <tbody>
@@ -1340,7 +1340,7 @@ function CarrinhoVenda({ dados, onSalvar, onCancelar }) {
                 {totalCusto > 0 && (
                   <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 2 }}>
                     Lucro: <span style={{ color: totalLucro >= 0 ? "var(--green)" : "var(--red)", fontWeight: 700 }}>{formatBRL(totalLucro)}</span>
-                    <span className={`badge ${badgeMargem(margemCarrinho)}`} style={{ marginLeft: 8, fontSize: 11 }} title="Margem: lucro ÷ preço de venda">{margemCarrinho === null ? "—" : `${margemCarrinho.toFixed(0)}%`} margem</span>
+                    <span className={`badge ${badgeMargem(margemCarrinho)}`} style={{ marginLeft: 8, fontSize: 11 }} title="O que sobra de cada real que entra (margem)">{margemCarrinho === null ? "—" : `${margemCarrinho.toFixed(0)}%`} sobre a venda</span>
                   </div>
                 )}
               </div>
@@ -1673,7 +1673,7 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
           {produtos.length === 0
             ? <div className="empty-state"><div className="empty-icon">📦</div><div className="empty-text">Nenhum produto cadastrado</div></div>
             : <table>
-              <thead><tr><th>Produto</th><th>SKU</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Margem / Markup</th><th></th></tr></thead>
+              <thead><tr><th>Produto</th><th>SKU</th><th>Compra</th><th>Venda</th><th>Estoque</th><th>Lucro %</th><th></th></tr></thead>
               <tbody>
                 {produtos.map(p => {
                   const vars = ordenarVariantes(variantesProduto.filter(v => v.produtoPaiId === p.id));
@@ -1695,12 +1695,12 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                           {temVars && <button className="produto-expand-btn" onClick={() => toggleExpand(p.id)}><Icon name={expandido ? "chevronDown" : "chevronRight"} size={12} />{vars.length} variante{vars.length !== 1 ? "s" : ""}</button>}
                         </div>
                       </td>
-                      {/* margem em destaque (e o numero que decide o preco),
-                          markup logo abaixo como apoio */}
+                      {/* o lucro sobre a venda vem em destaque, porque e ele
+                          que decide o preco; o sobre o custo fica de apoio */}
                       <td>
                         <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
-                          <span className={`badge ${badgeMargem(margem)}`} title="Margem: lucro ÷ preço de venda">{margem === null ? "—" : `${margem.toFixed(0)}%`} margem</span>
-                          <span style={{ fontSize: 11, color: "var(--text2)", whiteSpace: "nowrap" }} title="Markup: lucro ÷ preço de compra">{markup === null ? "—" : `${markup.toFixed(0)}%`} markup</span>
+                          <span className={`badge ${badgeMargem(margem)}`} title="O que sobra de cada real que entra (margem)">{margem === null ? "—" : `${margem.toFixed(0)}%`} sobre a venda</span>
+                          <span style={{ fontSize: 11, color: "var(--text2)", whiteSpace: "nowrap" }} title="Quanto você multiplicou o preço de compra (markup)">{markup === null ? "—" : `${markup.toFixed(0)}%`} sobre o custo</span>
                         </div>
                       </td>
                       <td>
@@ -1780,14 +1780,17 @@ function Estoque({ dados, onAdicionar, onRemover, onAtualizar, onAdicionarVarian
                   <div style={{ color: "var(--border2)", fontSize: 20 }}>→</div>
                   <div className="margem-item"><span className="margem-item-label">Lucro</span><span className="margem-item-value" style={{ color: precoForm.lucro >= 0 ? "var(--green)" : "var(--red)" }}>{formatBRL(precoForm.lucro)}</span></div>
                   <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-                    <span className={`badge ${badgeMargem(precoForm.margem)}`} style={{ fontSize: 14, padding: "5px 12px" }}>{precoForm.margem.toFixed(1)}% margem</span>
-                    <span className="badge badge-gold" style={{ fontSize: 12, padding: "5px 10px", opacity: 0.85 }}>{precoForm.markup === null ? "—" : `${precoForm.markup.toFixed(1)}%`} markup</span>
+                    <span className={`badge ${badgeMargem(precoForm.margem)}`} style={{ fontSize: 14, padding: "5px 12px" }}>{precoForm.margem.toFixed(1)}% sobre a venda</span>
+                    <span className="badge badge-gold" style={{ fontSize: 12, padding: "5px 10px", opacity: 0.85 }}>{precoForm.markup === null ? "—" : `${precoForm.markup.toFixed(1)}%`} sobre o custo</span>
                   </div>
                 </div>
-                {/* a confusão entre os dois é o erro de precificação mais comum */}
+                {/* confundir os dois percentuais é o erro de precificação mais
+                    comum; os nomes técnicos ficam aqui porque é o que contador
+                    e fornecedor usam */}
                 <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 6, lineHeight: 1.5 }}>
-                  <strong>Margem</strong> = lucro ÷ preço de venda — é o que sobra de cada real que entra.{" "}
-                  <strong>Markup</strong> = lucro ÷ preço de compra — é quanto você multiplicou o custo.
+                  <strong>Sobre a venda</strong> é o que sobra de cada real que entra.{" "}
+                  <strong>Sobre o custo</strong> é quanto você multiplicou o preço de compra.{" "}
+                  <span style={{ opacity: 0.7 }}>(No vocabulário do contador: margem e markup.)</span>
                 </div>
               </div>
             )}
